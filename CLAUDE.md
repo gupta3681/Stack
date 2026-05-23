@@ -287,6 +287,8 @@ If you're tempted to add a color or rounded corner, stop. The whole product's vi
 
 11. **Use `useInvalidateStacks()` after any task or stack mutation** ([useInvalidateStacks.ts](frontend/src/hooks/useInvalidateStacks.ts)). The hook invalidates `["stack"]`, `["topic-stack"]`, `["topic-stacks"]`, and `["overdue"]` together. If you only invalidate one, mutations on a topic-stack view won't refresh the UI (the bug that motivated this hook). Don't inline `qc.invalidateQueries({queryKey: ["stack"]})` in new mutations — use the hook so it stays consistent.
 
+12. **Mobile responsive at ≤700px and ≤420px** (all in one `@media` block at the bottom of [index.css](frontend/src/index.css)). When adding new components, keep them desktop-correct at the component level and add mobile overrides in that block — don't mix breakpoints throughout the file. Inputs that accept text must be ≥16px font-size on mobile or iOS Safari zooms on focus. Drag-and-drop uses `MouseSensor` + `TouchSensor` with a 200ms touch delay so finger scroll isn't hijacked into a reorder.
+
 ---
 
 ## Open issues we know about

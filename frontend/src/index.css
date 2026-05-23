@@ -1028,3 +1028,215 @@ textarea:focus {
   letter-spacing: -0.02em;
   margin: 0;
 }
+
+/* ─── Mobile / responsive ───
+ * Keep the Mono aesthetic intact on small screens: still monochrome, still
+ * sharp borders, still typography-driven hierarchy. Scale everything down
+ * uniformly and let high-density rows wrap rather than overflow.
+ */
+
+@media (max-width: 700px) {
+  .app {
+    padding: 20px 16px 60px;
+  }
+
+  /* Topbar collapses to two rows: brand on top, nav scrolls horizontally. */
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding-bottom: 12px;
+    margin-bottom: 28px;
+  }
+  .topbar__brand {
+    font-size: 26px;
+  }
+  .topbar__nav {
+    width: 100%;
+    overflow-x: auto;
+    gap: 16px;
+    padding-bottom: 4px;
+    /* hide the scrollbar but keep horizontal scrolling */
+    scrollbar-width: none;
+  }
+  .topbar__nav::-webkit-scrollbar {
+    display: none;
+  }
+  .topbar__user {
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    white-space: nowrap;
+  }
+  .topbar__sep {
+    display: none;
+  }
+  .nav-link {
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Stack header */
+  .stack-head__title {
+    font-size: 32px;
+  }
+  .stack-head__intention,
+  .stack-head__intention input {
+    font-size: 20px;
+  }
+
+  /* Quick capture: input on top, priority chips below */
+  .qc {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 10px 0;
+  }
+  .qc__input-wrap {
+    gap: 8px;
+  }
+  .qc__input {
+    font-size: 16px; /* 16px+ keeps iOS Safari from zooming on focus */
+  }
+  .qc__hints {
+    /* full-width grid of 4 equal chips */
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .qc__hint {
+    padding: 8px 4px;
+    text-align: center;
+  }
+
+  /* Tasks */
+  .task {
+    grid-template-columns: 32px 1fr;
+    gap: 8px;
+    padding: 14px 0;
+  }
+  .task__pos {
+    font-size: 12px;
+    padding-top: 4px;
+    /* a tall touch target makes the drag handle grabbable */
+    min-height: 36px;
+    touch-action: none;
+  }
+  .task__actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-top: 4px;
+  }
+  .task__icon,
+  .task__icon--text {
+    padding: 6px 8px;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+  }
+  .task__check {
+    width: 28px;
+    height: 28px;
+  }
+  .task__x {
+    padding: 4px 10px;
+    font-size: 20px;
+  }
+  /* Prominence scaling smaller on phone */
+  .task--p0 .task__title {
+    font-size: 26px;
+  }
+  .task--p1 .task__title {
+    font-size: 22px;
+  }
+  .task--p2 .task__title {
+    font-size: 18px;
+  }
+  .task--p3 .task__title,
+  .task--prest .task__title {
+    font-size: 16px;
+  }
+  .task__desc {
+    font-size: 13px;
+  }
+  .task--active {
+    margin-left: -8px;
+    padding-left: 8px;
+  }
+
+  /* Modal — full-bleed-ish on phone */
+  .modal-backdrop {
+    padding: 12px;
+    align-items: flex-start;
+  }
+  .modal {
+    max-height: calc(100vh - 24px);
+  }
+  .modal__head,
+  .modal__form {
+    padding: 16px;
+  }
+  .modal__form {
+    gap: 16px;
+  }
+  .modal__title-input {
+    font-size: 20px;
+  }
+  .modal__hints {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .modal__actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .modal__actions-right {
+    justify-content: space-between;
+  }
+
+  /* Topic stacks list */
+  .topics__head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .topics__head-actions {
+    flex-wrap: wrap;
+  }
+  .topics__item {
+    padding: 16px 0;
+  }
+  .topics__item-name {
+    font-size: 22px;
+  }
+
+  /* Overdue */
+  .overdue-task {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  /* Auth */
+  .auth-shell {
+    padding: 24px 12px;
+    align-items: flex-start;
+  }
+  .auth-box {
+    padding: 24px 20px;
+  }
+  .auth-brand {
+    font-size: 32px;
+  }
+  .auth-field input {
+    font-size: 16px; /* prevent iOS zoom */
+  }
+}
+
+@media (max-width: 420px) {
+  /* On very narrow screens, hide the user name — login state is implied
+   * by being in the app. The Log out button still works. */
+  .topbar__user {
+    display: none;
+  }
+}

@@ -1,7 +1,8 @@
 import {
   DndContext,
   DragEndEvent,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -44,7 +45,14 @@ export function StackView({ tasks, stackRef, moveTarget }: Props) {
   }, [refKey(stackRef), tasks]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
+    // Mouse: tiny distance is enough to disambiguate click from drag.
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
+    // Touch: require a brief hold so a vertical finger drag is interpreted
+    // as page scroll, not as a task reorder. Without this, drag-and-drop
+    // hijacks every swipe on mobile.
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 6 },
+    })
   );
 
   const reorder = useMutation({
