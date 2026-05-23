@@ -95,6 +95,9 @@ export function StackView({ tasks, stackRef, moveTarget }: Props) {
         items={display.map((t) => t.id)}
         strategy={verticalListSortingStrategy}
       >
+        <div className="ondeck-label" aria-hidden>
+          On deck ↓
+        </div>
         <ul className="tasks">
           {display.map((task, idx) => (
             <TaskCard

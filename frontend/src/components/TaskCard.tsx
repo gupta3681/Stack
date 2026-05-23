@@ -139,11 +139,19 @@ export function TaskCard({ task, positionIndex, moveTarget }: Props) {
           .join(" ")}
         {...attributes}
       >
-        <div className="task__pos" {...listeners} style={{ cursor: "grab" }}>
+        <div
+          className="task__pos"
+          {...listeners}
+          style={{ cursor: "grab", touchAction: "none" }}
+        >
           {String(positionIndex + 1).padStart(2, "0")}
         </div>
 
-        <div className="task__body">
+        <div
+          className="task__body"
+          {...listeners}
+          style={{ cursor: "grab", touchAction: "none" }}
+        >
           <p className="task__title">{task.title}</p>
           {task.description && <p className="task__desc">{task.description}</p>}
           {(task.priority_hint && task.priority_hint !== "normal") ||

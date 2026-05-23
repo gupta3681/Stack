@@ -894,6 +894,134 @@ textarea:focus {
   padding-top: 16px;
 }
 
+/* ── About / vision page ── */
+
+.about {
+  max-width: 680px;
+  /* slightly narrower than the app shell so prose line-length stays readable */
+}
+
+.about__hero {
+  border-bottom: 1px solid var(--ink);
+  padding-bottom: 32px;
+  margin-bottom: 32px;
+}
+
+.about__eyebrow {
+  font-family: var(--font-cond);
+  font-size: 14px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-bottom: 16px;
+}
+
+.about__title {
+  font-family: var(--font-nh);
+  font-weight: 300;
+  font-size: 43px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin: 0 0 20px;
+}
+
+.about__lede {
+  font-family: var(--font-ev);
+  font-weight: 100;
+  font-size: 22px;
+  line-height: 1.45;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  margin: 0;
+}
+
+.about__section {
+  border-top: 1px solid var(--ink);
+  padding-top: 24px;
+  margin-top: 32px;
+}
+
+.about__section:first-of-type {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.about__section-label {
+  font-family: var(--font-cond);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-bottom: 16px;
+}
+
+.about__sub {
+  font-family: var(--font-nh);
+  font-weight: 400;
+  font-size: 22px;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin: 28px 0 8px;
+}
+
+.about__section p {
+  font-family: var(--font-nh);
+  font-weight: 300;
+  font-size: 16px;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 0 0 12px;
+  max-width: 60ch;
+}
+
+.about__section em {
+  font-style: italic;
+}
+
+.about__section strong {
+  font-weight: 400;
+}
+
+.about__section code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+  background: var(--canvas);
+  border-bottom: 1px solid var(--ink);
+  padding: 0 2px;
+}
+
+.about__footer {
+  border-top: 1px solid var(--ink);
+  padding-top: 24px;
+  margin-top: 48px;
+}
+
+.about__footer p {
+  font-family: var(--font-nh);
+  font-weight: 300;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  opacity: 0.7;
+  margin: 0;
+}
+
+@media (max-width: 700px) {
+  .about__title {
+    font-size: 32px;
+  }
+  .about__lede {
+    font-size: 18px;
+  }
+  .about__sub {
+    font-size: 19px;
+  }
+}
+
 /* ── Topbar user + logout ── */
 
 .topbar__sep {
@@ -1070,7 +1198,14 @@ textarea:focus {
   font-weight: 400;
 }
 
-/* Prominence scaling — bigger at top, smaller below */
+/* ── Priority signal ──
+ * Three reinforcing cues:
+ *   1. Font-size scaling — top card title is the biggest type on the screen.
+ *   2. Extra gap below the top card — visually separates "the one I'm doing"
+ *      from "the queue."
+ *   3. Opacity decay down the stack — lower items fade into the background;
+ *      hover brings them back to full strength so they stay interactable.
+ */
 .task--p0 .task__title {
   font-size: 40px;
   font-weight: 300;
@@ -1091,6 +1226,39 @@ textarea:focus {
   font-size: 18px;
   font-weight: 400;
   line-height: 1.25;
+}
+
+/* Visual "throne" — the top card gets breathing room below it so it stops
+   feeling like just the first item in a list. */
+.task--p0 {
+  padding-bottom: 28px;
+  margin-bottom: 16px;
+}
+
+/* Opacity decay. Hover restores so the queue stays interactable. */
+.task--p1 { opacity: 0.85; }
+.task--p2 { opacity: 0.72; }
+.task--p3 { opacity: 0.6;  }
+.task--prest { opacity: 0.5; }
+
+.task--p1:hover,
+.task--p2:hover,
+.task--p3:hover,
+.task--prest:hover {
+  opacity: 1;
+}
+
+/* "ON DECK" eyebrow above the first task — names what's at the top of the
+   stack instead of leaving the user to infer it. */
+.ondeck-label {
+  font-family: var(--font-cond);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  opacity: 0.6;
+  padding: 4px 0;
+  margin-top: 4px;
 }
 
 .task--done .task__title {

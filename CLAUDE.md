@@ -22,7 +22,7 @@ Treat drift here the same as a broken test: don't ship without fixing it. If a s
 
 ## Vision
 
-Most to-do apps are flat lists. They don't capture the truth that **priority is a stack, not a list**: there's one thing on top, the rest are queued, and the order changes as context shifts.
+Most to-do apps are flat lists. They don't capture the truth that **priority is a queue, not a list**: there's one thing on top, the rest are queued, and the order changes as context shifts. The data structure is a priority queue; the product is named **Stack** because that's the everyday word for a pile of work.
 
 Stack's core moves:
 - **Daily stacks** — one per day. What you're committing to today. Forcing function for prioritization.
@@ -50,6 +50,7 @@ Stack's core moves:
 - ✅ Confirm-password field on signup
 - ✅ Task counts in topbar nav (`Today (3)`, `Tomorrow (5)`, `Stacks (4)`)
 - ✅ First-run onboarding tips card (no library tour — dismissable Mono card)
+- ✅ About page (vision, sharing roadmap, AI agent roadmap)
 - ✅ Dev: SQLite + native `./dev.sh`, OR Postgres + Docker compose
 - ✅ Prod overlay (`docker-compose.prod.yml`): nginx in front, backend/db isolated inside the network
 - ✅ Deployed on Railway (single-image root `Dockerfile` + managed Postgres)
@@ -208,6 +209,7 @@ Stack/
             ├── TaskEditModal.tsx   ← edit title/desc/due/priority
             ├── OverdueSection.tsx
             ├── OnboardingTips.tsx  ← first-run dismissable tips card
+            ├── AboutPage.tsx       ← vision + sharing + AI roadmap
             ├── TopicStackList.tsx  ← "All Stacks" page + create modal
             └── TopicStackView.tsx  ← single topic stack detail
 ```
@@ -336,6 +338,8 @@ Not bugs we're blocked on — just real things flagged by code review that haven
 - **Cancelling a done task destroys `completed_at`.** No `cancelled_at` column; the only completion timestamp is lost.
 - **Mutations other than `stackQuery` don't auto-logout on 401.** Only the stack-query 401 hook in App.tsx kicks the user to login.
 - **No real migrations.** `Base.metadata.create_all` + idempotent ALTERs is fine for the current scale but will bite the first time we need a column rename, type change, or backfill.
+- **No way to browse past stacks in the UI.** Yesterday's stack and everything before it still exist in the DB (tasks marked done that day have their `completed_at` timestamp, etc.), and the API can return them via `GET /stacks/{date}`. The frontend just doesn't surface them anywhere — Overdue only shows unfinished items. A `← Yesterday` button or a date picker in the topbar would close this gap without any schema work.
+- **`index.css` is a single ~1100-line file.** Functional but unwieldy. Two reasonable next steps when it starts hurting: (a) split into per-feature CSS files glued by `@import`, or (b) move to CSS Modules with colocated `.module.css` per component (tokens + responsive stay global). B is the real fix; A is the cheap intermediate step.
 
 ---
 
