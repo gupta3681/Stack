@@ -25,6 +25,29 @@ def test_signup_creates_user_and_sets_session_cookie(client: TestClient):
     assert me.json()["email"] == "a@b.com"
 
 
+def test_session_token_is_hashed_at_rest(client: TestClient):
+    from app import database as db_module
+    from app import models
+
+    r = client.post(
+        "/auth/signup",
+        json={"email": "hashcheck@example.com", "password": "passworddd"},
+    )
+    assert r.status_code == 201
+    raw_token = r.cookies["stack_session"]
+
+    override = client.app.dependency_overrides[db_module.get_db]
+    session_iter = override()
+    db = next(session_iter)
+    try:
+        stored = db.query(models.Session).one()
+    finally:
+        session_iter.close()
+
+    assert stored.id != raw_token
+    assert len(stored.id) == 64
+
+
 def test_signup_normalizes_email_to_lowercase(client: TestClient):
     r = client.post(
         "/auth/signup", json={"email": "MixedCase@Example.com", "password": "passworddd"}
@@ -77,3 +100,29 @@ def test_logout_revokes_session(client: TestClient):
 def test_logout_without_cookie_is_idempotent_204(client: TestClient):
     r = client.post("/auth/logout")
     assert r.status_code == 204
+
+
+def test_unsafe_requests_require_csrf_header(client: TestClient):
+    client.headers.pop("X-Stack-CSRF", None)
+    r = client.post(
+        "/auth/signup",
+        json={"email": "csrf@example.com", "password": "passworddd"},
+    )
+    assert r.status_code == 403
+
+
+def test_login_rate_limit_returns_429(client: TestClient, monkeypatch):
+    from app.security import reset_rate_limits
+
+    monkeypatch.setenv("AUTH_RATE_LIMIT_LOGIN_EMAIL_ATTEMPTS", "2")
+    monkeypatch.setenv("AUTH_RATE_LIMIT_LOGIN_IP_ATTEMPTS", "100")
+    reset_rate_limits()
+
+    client.post("/auth/signup", json={"email": "rate@example.com", "password": "passworddd"})
+    client.cookies.clear()
+
+    for _ in range(2):
+        r = client.post("/auth/login", json={"email": "rate@example.com", "password": "wrong"})
+        assert r.status_code == 401
+    r = client.post("/auth/login", json={"email": "rate@example.com", "password": "wrong"})
+    assert r.status_code == 429

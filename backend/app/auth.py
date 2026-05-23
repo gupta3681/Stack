@@ -36,16 +36,20 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
+def _session_token_digest(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
 def _now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def create_session(
     db: DbSession, user: models.User, user_agent: str | None = None
-) -> models.Session:
+) -> tuple[models.Session, str]:
     token = secrets.token_urlsafe(32)
     session = models.Session(
-        id=token,
+        id=_session_token_digest(token),
         user_id=user.id,
         expires_at=_now() + SESSION_TTL,
         user_agent=user_agent,
@@ -53,11 +57,14 @@ def create_session(
     db.add(session)
     db.commit()
     db.refresh(session)
-    return session
+    return session, token
 
 
 def set_session_cookie(response: Response, token: str) -> None:
-    secure_cookies = os.getenv("COOKIE_SECURE", "false").lower() == "true"
+    default_secure = (
+        "true" if os.getenv("APP_ENV", "").lower() == "production" else "false"
+    )
+    secure_cookies = os.getenv("COOKIE_SECURE", default_secure).lower() == "true"
     response.set_cookie(
         key=SESSION_COOKIE_NAME,
         value=token,
@@ -81,7 +88,7 @@ def get_current_user(
     if not session_token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
-    session = db.get(models.Session, session_token)
+    session = db.get(models.Session, _session_token_digest(session_token))
     if session is None or session.expires_at < _now():
         if session is not None:
             db.delete(session)
@@ -96,7 +103,7 @@ def get_current_user(
 
 
 def revoke_session(db: DbSession, token: str) -> None:
-    session = db.get(models.Session, token)
+    session = db.get(models.Session, _session_token_digest(token))
     if session is not None:
         db.delete(session)
         db.commit()

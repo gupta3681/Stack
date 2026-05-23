@@ -48,6 +48,7 @@ Stack's core moves:
 - ✅ Edit modal (title, description, due date, priority hint)
 - ✅ Dev: SQLite + native `./dev.sh`, OR Postgres + Docker compose
 - ✅ Prod overlay (`docker-compose.prod.yml`): nginx in front, backend/db isolated inside the network
+- ✅ Fly.io target (`Dockerfile.fly` + `fly.toml`): single public nginx port, backend on loopback
 
 ## What's deliberately NOT built (yet)
 
@@ -134,13 +135,14 @@ Key shape rules:
 ## Auth
 
 - **Email + password.** bcrypt with SHA-256 prehash so passwords of any length work without bcrypt's 72-byte limit biting ([auth.py](backend/app/auth.py)).
-- **Server-side sessions.** Random 32-byte URL-safe token stored as the cookie value and as a row in `sessions`. 30-day TTL. Revocable.
-- **`HttpOnly` cookie, `SameSite=Lax`, `path=/`.** `Secure` flag controlled by `COOKIE_SECURE` env var — flip to `true` when serving over HTTPS.
+- **Server-side sessions.** Random 32-byte URL-safe token stored as the cookie value; a SHA-256 digest is stored in `sessions`. 30-day TTL. Revocable.
+- **Session tokens are hashed at rest.** The browser cookie holds the raw random token; `sessions.id` stores only its SHA-256 digest.
+- **`HttpOnly` cookie, `SameSite=Lax`, `path=/`.** `Secure` defaults to true when `APP_ENV=production`; it can still be forced with `COOKIE_SECURE`.
 - **Every endpoint** that touches user data uses `Depends(get_current_user)`. Stack/task queries filter by `current_user.id`. Direct task lookups go through `_get_owned_task` which returns 404 (not 403) for foreign tasks to avoid leaking existence.
+- **CSRF defense:** every unsafe request requires `X-Stack-CSRF: 1`; the frontend API client adds it globally. This blocks cross-site form POSTs from using the session cookie.
+- **Auth rate limiting:** login/signup have a small in-process sliding-window limiter. The Fly nginx config also rate-limits login/signup at the proxy.
 
-No CSRF tokens yet — `SameSite=Lax` blocks cross-site form POSTs which is enough for local dev. Add CSRF if/when this goes public.
-
-No rate limiting yet. When deploying, drop in [`slowapi`](https://github.com/laurentS/slowapi) or rely on Cloudflare's free WAF at the edge.
+The limiter is per process/Machine, not a distributed quota. If this gets real traffic, keep the app-level limiter but add an edge WAF or shared store-backed limiter.
 
 ---
 
@@ -149,9 +151,14 @@ No rate limiting yet. When deploying, drop in [`slowapi`](https://github.com/lau
 ```
 Stack/
 ├── CLAUDE.md                ← you are here
+├── Dockerfile.fly           ← Fly.io single-image production target
 ├── design.md                ← Mono design system reference
 ├── docker-compose.yml       ← dev: db + backend (Postgres) + frontend (Vite)
 ├── docker-compose.prod.yml  ← prod overlay: nginx in front, internal-only services
+├── fly.toml                 ← Fly.io app config (edit app/domain before deploy)
+├── deploy/
+│   ├── nginx.fly.conf       ← single-image nginx config + security headers
+│   └── start_fly.py         ← starts uvicorn + nginx in the Fly image
 ├── dev.sh                   ← native dev (SQLite + uvicorn + Vite, no Docker)
 ├── .env                     ← local secrets, gitignored
 ├── .env.example             ← template
@@ -233,6 +240,19 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build
 
 App on http://localhost:8080 (configurable via `HOST_PORT` in [.env](.env)). Browser sees same origin for app + `/api`. Backend and db have no published ports.
 
+### Fly.io
+
+```bash
+# Edit fly.toml first: app name, primary region, CORS_ORIGINS.
+fly launch --no-deploy
+fly postgres create
+fly postgres attach <postgres-app-name>
+fly secrets set DATABASE_URL='postgresql+psycopg://...' COOKIE_SECURE=true APP_ENV=production
+fly deploy
+```
+
+The Fly target uses [Dockerfile.fly](Dockerfile.fly): nginx listens on `:8080`, proxies `/api` to FastAPI on loopback `:8000`, and serves the built React bundle. Keep `force_https=true` in [fly.toml](fly.toml) so browser traffic is HTTPS even though Fly forwards plaintext to the Machine internally.
+
 ### Running tests
 
 ```bash
@@ -285,9 +305,11 @@ If you're tempted to add a color or rounded corner, stop. The whole product's vi
 
 10. **CORS_ORIGINS env var is read by the backend at boot.** Comma-separated. Defaults to `http://localhost:5173,http://127.0.0.1:5173`. Update if you change the dev port or deploy somewhere new.
 
-11. **Use `useInvalidateStacks()` after any task or stack mutation** ([useInvalidateStacks.ts](frontend/src/hooks/useInvalidateStacks.ts)). The hook invalidates `["stack"]`, `["topic-stack"]`, `["topic-stacks"]`, and `["overdue"]` together. If you only invalidate one, mutations on a topic-stack view won't refresh the UI (the bug that motivated this hook). Don't inline `qc.invalidateQueries({queryKey: ["stack"]})` in new mutations — use the hook so it stays consistent.
+11. **CSRF header is mandatory on unsafe requests.** [api/client.ts](frontend/src/api/client.ts) adds `X-Stack-CSRF: 1` globally. Any new non-frontend client or test fixture must send that header for POST/PATCH/DELETE.
 
-12. **Mobile responsive at ≤700px and ≤420px** (all in one `@media` block at the bottom of [index.css](frontend/src/index.css)). When adding new components, keep them desktop-correct at the component level and add mobile overrides in that block — don't mix breakpoints throughout the file. Inputs that accept text must be ≥16px font-size on mobile or iOS Safari zooms on focus. Drag-and-drop uses `MouseSensor` + `TouchSensor` with a 200ms touch delay so finger scroll isn't hijacked into a reorder.
+12. **Use `useInvalidateStacks()` after any task or stack mutation** ([useInvalidateStacks.ts](frontend/src/hooks/useInvalidateStacks.ts)). The hook invalidates `["stack"]`, `["topic-stack"]`, `["topic-stacks"]`, and `["overdue"]` together. If you only invalidate one, mutations on a topic-stack view won't refresh the UI (the bug that motivated this hook). Don't inline `qc.invalidateQueries({queryKey: ["stack"]})` in new mutations — use the hook so it stays consistent.
+
+13. **Mobile responsive at ≤700px and ≤420px** (all in one `@media` block at the bottom of [index.css](frontend/src/index.css)). When adding new components, keep them desktop-correct at the component level and add mobile overrides in that block — don't mix breakpoints throughout the file. Inputs that accept text must be ≥16px font-size on mobile or iOS Safari zooms on focus. Drag-and-drop uses `MouseSensor` + `TouchSensor` with a 200ms touch delay so finger scroll isn't hijacked into a reorder.
 
 ---
 

@@ -35,4 +35,4 @@ services:
     environment: !reset {}
     # !override REPLACES the dev ports (5173) instead of merging with them.
     ports: !override
-      - "${HOST_PORT:-8080}:80"
+      - "${HOST_PORT:-8080}:8080"

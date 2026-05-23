@@ -10,6 +10,8 @@ def _resolve_database_url() -> str:
     url = os.getenv("DATABASE_URL")
     if url:
         return url
+    if os.getenv("APP_ENV", "").lower() == "production":
+        raise RuntimeError("DATABASE_URL is required when APP_ENV=production")
     db_path = Path(__file__).resolve().parent.parent / "stack.db"
     return f"sqlite:///{db_path}"
 

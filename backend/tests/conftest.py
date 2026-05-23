@@ -50,7 +50,9 @@ def client() -> Iterator[TestClient]:
     from app import database as db_module
     from app.database import Base
     from app.main import app
+    from app.security import reset_rate_limits
 
+    reset_rate_limits()
     Base.metadata.create_all(bind=engine)
 
     def override_get_db():
@@ -63,6 +65,7 @@ def client() -> Iterator[TestClient]:
     app.dependency_overrides[db_module.get_db] = override_get_db
     try:
         with TestClient(app) as c:
+            c.headers.update({"X-Stack-CSRF": "1"})
             yield c
     finally:
         app.dependency_overrides.clear()
@@ -94,6 +97,7 @@ def second_client(client: TestClient) -> TestClient:
     from app.main import app
 
     other = TestClient(app)
+    other.headers.update({"X-Stack-CSRF": "1"})
     r = other.post(
         "/auth/signup",
         json={"email": "other@example.com", "password": "anotherpw1234", "display_name": "Other"},

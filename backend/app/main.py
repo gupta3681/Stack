@@ -7,6 +7,7 @@ from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from .database import Base, engine
 from .routers import auth, stacks, tasks
+from .security import enforce_csrf_header
 
 
 def _drop_pre_auth_tables_if_needed() -> None:
@@ -85,6 +86,8 @@ _migrate_add_stack_kind_columns()
 
 
 app = FastAPI(title="Stack", version="0.2.0")
+
+app.middleware("http")(enforce_csrf_header)
 
 cors_origins = os.getenv(
     "CORS_ORIGINS",

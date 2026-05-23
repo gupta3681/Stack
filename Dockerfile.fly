@@ -1,0 +1,51 @@
+# Single-image Fly.io target: React static bundle + nginx + FastAPI.
+
+FROM node:23-alpine AS frontend-build
+WORKDIR /app
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm ci
+COPY frontend/tsconfig.json frontend/vite.config.ts frontend/index.html ./
+COPY frontend/src ./src
+RUN npm run build
+
+
+FROM python:3.12-slim AS backend-build
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    UV_LINK_MODE=copy
+
+RUN pip install --no-cache-dir uv==0.5.11
+
+WORKDIR /app
+COPY backend/pyproject.toml backend/uv.lock* ./
+RUN uv sync --frozen --no-install-project 2>/dev/null || uv sync --no-install-project
+COPY backend/app ./app
+RUN uv sync --no-dev
+
+
+FROM python:3.12-slim
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/app/.venv/bin:${PATH}"
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates nginx \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY --from=backend-build /app/.venv ./.venv
+COPY --from=backend-build /app/app ./app
+COPY --from=frontend-build /app/dist /usr/share/nginx/html
+COPY deploy/nginx.fly.conf /etc/nginx/nginx.conf
+COPY deploy/start_fly.py /app/start_fly.py
+
+RUN useradd --create-home --shell /usr/sbin/nologin stack \
+    && mkdir -p /tmp/nginx/client_body /tmp/nginx/proxy /tmp/nginx/fastcgi \
+        /tmp/nginx/uwsgi /tmp/nginx/scgi /run/nginx \
+    && chown -R stack:stack /app /usr/share/nginx/html /tmp/nginx /run/nginx \
+        /var/cache/nginx /var/lib/nginx
+
+USER stack
+EXPOSE 8080
+
+CMD ["python", "/app/start_fly.py"]

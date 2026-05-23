@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session as DbSession
 from .. import auth as auth_service
 from .. import models
 from ..database import get_db
+from ..security import check_login_rate_limit, check_signup_rate_limit
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -33,8 +34,8 @@ def _issue_session(
     db: DbSession, user: models.User, request: Request, response: Response
 ) -> UserOut:
     ua = request.headers.get("user-agent")
-    session = auth_service.create_session(db, user, user_agent=ua)
-    auth_service.set_session_cookie(response, session.id)
+    _, token = auth_service.create_session(db, user, user_agent=ua)
+    auth_service.set_session_cookie(response, token)
     return UserOut.model_validate(user)
 
 
@@ -45,6 +46,7 @@ def signup(
     response: Response,
     db: DbSession = Depends(get_db),
 ):
+    check_signup_rate_limit(request)
     existing = db.execute(
         select(models.User).where(models.User.email == payload.email.lower())
     ).scalar_one_or_none()
@@ -70,6 +72,7 @@ def login(
     response: Response,
     db: DbSession = Depends(get_db),
 ):
+    check_login_rate_limit(request, payload.email)
     user = db.execute(
         select(models.User).where(models.User.email == payload.email.lower())
     ).scalar_one_or_none()
