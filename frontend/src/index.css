@@ -771,6 +771,129 @@ textarea:focus {
   color: var(--canvas);
 }
 
+/* ── Profile modal extras ── */
+
+.topbar__user--button {
+  /* Override the global button border + padding — we want this to look like
+     the other nav items, not a boxed button. Only the bottom border is kept
+     (transparent by default, ink on hover) for an underline-style affordance. */
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.topbar__user--button:hover {
+  background: transparent;
+  border-bottom-color: var(--ink);
+}
+
+.profile__readonly {
+  font-family: var(--font-nh);
+  font-size: 16px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  border-bottom: 1px solid var(--ink);
+  opacity: 0.6;
+  padding: 4px 0;
+}
+
+.profile__divider {
+  border-top: 1px solid var(--ink);
+  margin: 0 20px;
+}
+
+.profile__section-title {
+  font-family: var(--font-cond);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  border-bottom: 1px solid var(--ink);
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+}
+
+.profile__note {
+  font-family: var(--font-cond);
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  padding: 8px 12px;
+}
+
+/* ── Onboarding tips card ── */
+
+.onboarding {
+  border: 1px solid var(--ink);
+  padding: 24px;
+  margin-bottom: 32px;
+}
+
+.onboarding__eyebrow {
+  font-family: var(--font-cond);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.onboarding__title {
+  font-family: var(--font-nh);
+  font-weight: 300;
+  font-size: 28px;
+  letter-spacing: -0.02em;
+  margin: 0 0 16px;
+  color: var(--ink);
+}
+
+.onboarding__tips {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.onboarding__tips li {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  align-items: baseline;
+  gap: 16px;
+  font-family: var(--font-nh);
+  font-size: 15px;
+  line-height: 1.45;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.onboarding__tips strong {
+  font-weight: 400;
+}
+
+.onboarding__key {
+  font-family: var(--font-cond);
+  font-size: 14px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  padding: 4px 0;
+  text-align: center;
+}
+
+.onboarding__actions {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid var(--ink);
+  padding-top: 16px;
+}
+
 /* ── Topbar user + logout ── */
 
 .topbar__sep {

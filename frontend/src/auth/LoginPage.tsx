@@ -9,6 +9,7 @@ export function LoginPage() {
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -17,6 +18,12 @@ export function LoginPage() {
     e.preventDefault();
     if (busy) return;
     setError(null);
+
+    if (mode === "signup" && password !== confirmPassword) {
+      setError("Passwords don't match.");
+      return;
+    }
+
     setBusy(true);
     try {
       if (mode === "login") {
@@ -47,6 +54,7 @@ export function LoginPage() {
             onClick={() => {
               setMode("login");
               setError(null);
+              setConfirmPassword("");
             }}
           >
             Log in
@@ -57,6 +65,7 @@ export function LoginPage() {
             onClick={() => {
               setMode("signup");
               setError(null);
+              setConfirmPassword("");
             }}
           >
             Sign up
@@ -90,15 +99,28 @@ export function LoginPage() {
           </label>
 
           {mode === "signup" && (
-            <label className="auth-field">
-              <span className="auth-label">Display name (optional)</span>
-              <input
-                type="text"
-                autoComplete="name"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-              />
-            </label>
+            <>
+              <label className="auth-field">
+                <span className="auth-label">Confirm password</span>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  minLength={8}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </label>
+              <label className="auth-field">
+                <span className="auth-label">Display name (optional)</span>
+                <input
+                  type="text"
+                  autoComplete="name"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                />
+              </label>
+            </>
           )}
 
           {error && <div className="auth-error">{error}</div>}

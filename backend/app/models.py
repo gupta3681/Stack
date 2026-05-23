@@ -49,6 +49,9 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     display_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    # Set when the user dismisses the first-run onboarding tips. NULL means the
+    # tips are still shown on next visit.
+    onboarded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class Session(Base):

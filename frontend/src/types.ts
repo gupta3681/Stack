@@ -73,6 +73,13 @@ export interface AuthUser {
   id: number;
   email: string;
   display_name: string | null;
+  onboarded: boolean;
+}
+
+export interface StackCounts {
+  today: number;
+  tomorrow: number;
+  topic_stacks: number;
 }
 
 export interface LoginInput {

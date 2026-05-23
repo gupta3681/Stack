@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -212,6 +212,53 @@ def delete_topic_stack(
         raise HTTPException(status_code=404, detail="Stack not found")
     db.delete(stack)
     db.commit()
+
+
+@router.get("/counts", response_model=schemas.StackCounts)
+def stack_counts(
+    today: date | None = None,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Lightweight summary for the topbar badges.
+
+    Counts pending+in-progress tasks for today and tomorrow (so completed
+    tasks don't inflate the "work to do" number). For topic stacks, counts
+    the number of stacks (not items) — that's the actionable "you have N
+    lists" number.
+    """
+    cutoff_today = today or date.today()
+    cutoff_tomorrow = cutoff_today + timedelta(days=1)
+    active_statuses = [models.TaskStatus.pending, models.TaskStatus.in_progress]
+
+    def pending_count_for_date(d: date) -> int:
+        stmt = (
+            select(func.count(models.Task.id))
+            .join(models.Stack)
+            .where(
+                models.Task.user_id == current_user.id,
+                models.Stack.user_id == current_user.id,
+                models.Stack.stack_date == d,
+                models.Task.status.in_(active_statuses),
+            )
+        )
+        return int(db.execute(stmt).scalar() or 0)
+
+    topic_count = int(
+        db.execute(
+            select(func.count(models.Stack.id)).where(
+                models.Stack.user_id == current_user.id,
+                models.Stack.kind != models.StackKind.daily,
+            )
+        ).scalar()
+        or 0
+    )
+
+    return schemas.StackCounts(
+        today=pending_count_for_date(cutoff_today),
+        tomorrow=pending_count_for_date(cutoff_tomorrow),
+        topic_stacks=topic_count,
+    )
 
 
 @router.get("/{stack_date}", response_model=schemas.StackOut)

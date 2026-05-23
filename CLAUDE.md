@@ -46,8 +46,13 @@ Stack's core moves:
 - ✅ Move tasks between stacks (e.g. pull from a topic stack into Today)
 - ✅ Quick-capture with priority hints
 - ✅ Edit modal (title, description, due date, priority hint)
+- ✅ Profile modal (display name + change password with current-pw verification)
+- ✅ Confirm-password field on signup
+- ✅ Task counts in topbar nav (`Today (3)`, `Tomorrow (5)`, `Stacks (4)`)
+- ✅ First-run onboarding tips card (no library tour — dismissable Mono card)
 - ✅ Dev: SQLite + native `./dev.sh`, OR Postgres + Docker compose
 - ✅ Prod overlay (`docker-compose.prod.yml`): nginx in front, backend/db isolated inside the network
+- ✅ Deployed on Railway (single-image root `Dockerfile` + managed Postgres)
 - ✅ Root `Dockerfile`: single-image production build for platforms that detect a standard Dockerfile
 
 ## What's deliberately NOT built (yet)
@@ -169,8 +174,8 @@ Stack/
 │   │   ├── schemas.py       ← Pydantic request/response models
 │   │   ├── auth.py          ← password hashing, session mgmt, get_current_user
 │   │   └── routers/
-│   │       ├── auth.py      ← /auth/{signup,login,logout,me}
-│   │       ├── stacks.py    ← /stacks/{today,tomorrow,overdue,{date},topics,...}
+│   │       ├── auth.py      ← /auth/{signup,login,logout,me,change-password,me/onboarded}
+│   │       ├── stacks.py    ← /stacks/{today,tomorrow,overdue,counts,{date},topics,...}
 │   │       └── tasks.py     ← /tasks/{...} CRUD + move/reorder/start/pause
 │   └── tests/               ← pytest suite (45 tests)
 │       ├── conftest.py      ← in-memory SQLite fixtures
@@ -192,8 +197,9 @@ Stack/
         ├── types.ts
         ├── api/client.ts    ← `request<T>()` wrapper + the `api` object
         ├── auth/
-        │   ├── AuthContext.tsx
-        │   └── LoginPage.tsx
+        │   ├── AuthContext.tsx  ← user + login/signup/logout/refresh
+        │   ├── LoginPage.tsx    ← email + password (+ confirm on signup)
+        │   └── ProfileModal.tsx ← display name + change password
         └── components/
             ├── StackHeader.tsx
             ├── QuickCapture.tsx
@@ -201,6 +207,7 @@ Stack/
             ├── TaskCard.tsx        ← prominence-scaled, timer, action buttons
             ├── TaskEditModal.tsx   ← edit title/desc/due/priority
             ├── OverdueSection.tsx
+            ├── OnboardingTips.tsx  ← first-run dismissable tips card
             ├── TopicStackList.tsx  ← "All Stacks" page + create modal
             └── TopicStackView.tsx  ← single topic stack detail
 ```
@@ -309,6 +316,14 @@ If you're tempted to add a color or rounded corner, stop. The whole product's vi
 12. **Use `useInvalidateStacks()` after any task or stack mutation** ([useInvalidateStacks.ts](frontend/src/hooks/useInvalidateStacks.ts)). The hook invalidates `["stack"]`, `["topic-stack"]`, `["topic-stacks"]`, and `["overdue"]` together. If you only invalidate one, mutations on a topic-stack view won't refresh the UI (the bug that motivated this hook). Don't inline `qc.invalidateQueries({queryKey: ["stack"]})` in new mutations — use the hook so it stays consistent.
 
 13. **Mobile responsive at ≤700px and ≤420px** (all in one `@media` block at the bottom of [index.css](frontend/src/index.css)). When adding new components, keep them desktop-correct at the component level and add mobile overrides in that block — don't mix breakpoints throughout the file. Inputs that accept text must be ≥16px font-size on mobile or iOS Safari zooms on focus. Drag-and-drop uses `MouseSensor` + `TouchSensor` with a 200ms touch delay so finger scroll isn't hijacked into a reorder.
+
+14. **`AuthContext.refresh()` after any mutation that changes the user row** (display name change, onboarding completion, future fields). It re-fetches `/auth/me` and replaces the user state — so the topbar / onboarding visibility / etc. react. Don't push `setUser` access into other components.
+
+15. **`/auth/me/onboarded` is idempotent.** Re-calling on an already-onboarded user keeps the original `onboarded_at`. `OnboardingTips` only renders when `user.onboarded === false`, so dismissing once is permanent.
+
+16. **`POST /auth/change-password` requires the current password.** Never let a session change the password without re-verifying — a hijacked session could otherwise lock the real owner out. Also rejects "new == current" with 400.
+
+17. **`/stacks/counts` is the source for topbar badges.** Don't compute counts client-side from cached stack queries — different views fetch different keys, so counts would drift. Always invalidate `["counts"]` on mutations (`useInvalidateStacks` already does).
 
 ---
 

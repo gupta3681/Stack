@@ -19,6 +19,9 @@ interface AuthState {
   login: (input: LoginInput) => Promise<void>;
   signup: (input: SignupInput) => Promise<void>;
   logout: () => Promise<void>;
+  // Re-fetch /auth/me and replace user state. Call after PATCH /auth/me or
+  // any mutation that changes the user (display name, onboarded, etc.).
+  refresh: () => Promise<void>;
 }
 
 const AuthCtx = createContext<AuthState | null>(null);
@@ -63,6 +66,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus("authenticated");
   }, []);
 
+  const refresh = useCallback(async () => {
+    try {
+      const u = await api.me();
+      setUser(u);
+      setStatus("authenticated");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        setUser(null);
+        setStatus("anonymous");
+      }
+      // Other errors: leave existing state — caller can decide what to do.
+    }
+  }, []);
+
   const logout = useCallback(async () => {
     // Clear the user-scoped query cache BEFORE network so a slow/failing
     // logout request can't briefly expose the previous user's data to a
@@ -77,8 +94,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [qc]);
 
   const value = useMemo<AuthState>(
-    () => ({ status, user, login, signup, logout }),
-    [status, user, login, signup, logout]
+    () => ({ status, user, login, signup, logout, refresh }),
+    [status, user, login, signup, logout, refresh]
   );
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;

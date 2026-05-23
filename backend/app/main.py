@@ -80,9 +80,32 @@ def _migrate_add_stack_kind_columns() -> None:
                 pass
 
 
+def _migrate_add_user_onboarded_at() -> None:
+    """Additive migration: users.onboarded_at — null on existing rows.
+
+    Existing users get NULL, so they see the onboarding tips on next login.
+    That's intentional — better one-time tip card than missed introduction.
+    Safe to run repeatedly.
+    """
+    inspector = inspect(engine)
+    if "users" not in inspector.get_table_names():
+        return
+    columns = {c["name"] for c in inspector.get_columns("users")}
+    if "onboarded_at" in columns:
+        return
+    with engine.begin() as conn:
+        try:
+            conn.execute(
+                text("ALTER TABLE users ADD COLUMN onboarded_at TIMESTAMP")
+            )
+        except (OperationalError, ProgrammingError):
+            pass
+
+
 _drop_pre_auth_tables_if_needed()
 Base.metadata.create_all(bind=engine)
 _migrate_add_stack_kind_columns()
+_migrate_add_user_onboarded_at()
 
 
 app = FastAPI(title="Stack", version="0.2.0")

@@ -3,10 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { ApiError, api } from "./api/client";
 import { useAuth } from "./auth/AuthContext";
 import { LoginPage } from "./auth/LoginPage";
+import { ProfileModal } from "./auth/ProfileModal";
 import { StackHeader } from "./components/StackHeader";
 import { QuickCapture } from "./components/QuickCapture";
 import { StackView } from "./components/StackView";
 import { OverdueSection } from "./components/OverdueSection";
+import { OnboardingTips } from "./components/OnboardingTips";
 import { TopicStackList } from "./components/TopicStackList";
 import { TopicStackView } from "./components/TopicStackView";
 
@@ -30,10 +32,19 @@ function tomorrowISO(): string {
 function AuthedApp() {
   const { user, logout } = useAuth();
   const [view, setView] = useState<View>({ kind: "today" });
+  const [profileOpen, setProfileOpen] = useState(false);
 
   // Recompute on every render — no useMemo freeze. Crossing midnight (or any
   // re-render after the wall clock advances) picks up the new date naturally.
   const dates = { today: todayISO(), tomorrow: tomorrowISO() };
+
+  const countsQuery = useQuery({
+    queryKey: ["counts", dates.today],
+    queryFn: () => api.getCounts(dates.today),
+  });
+  const counts = countsQuery.data;
+  const navCount = (n: number | undefined) =>
+    n === undefined ? "" : n > 0 ? ` (${n})` : "";
 
   return (
     <div className="app">
@@ -45,33 +56,42 @@ function AuthedApp() {
             className={`nav-link${view.kind === "today" ? " nav-link--active" : ""}`}
             onClick={() => setView({ kind: "today" })}
           >
-            Today
+            Today{navCount(counts?.today)}
           </button>
           <button
             type="button"
             className={`nav-link${view.kind === "tomorrow" ? " nav-link--active" : ""}`}
             onClick={() => setView({ kind: "tomorrow" })}
           >
-            Tomorrow
+            Tomorrow{navCount(counts?.tomorrow)}
           </button>
           <button
             type="button"
             className={`nav-link${view.kind === "stacks-list" || view.kind === "stacks-detail" ? " nav-link--active" : ""}`}
             onClick={() => setView({ kind: "stacks-list" })}
           >
-            Stacks
+            Stacks{navCount(counts?.topic_stacks)}
           </button>
           <span className="topbar__sep" aria-hidden>
             ·
           </span>
-          <span className="topbar__user" title={user?.email}>
+          <button
+            type="button"
+            className="topbar__user topbar__user--button"
+            title={user?.email}
+            onClick={() => setProfileOpen(true)}
+          >
             {user?.display_name ?? user?.email}
-          </span>
+          </button>
           <button type="button" className="nav-link" onClick={() => logout()}>
             Log out
           </button>
         </nav>
       </div>
+
+      <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
+
+      <OnboardingTips />
 
       {view.kind === "today" || view.kind === "tomorrow" ? (
         <DailyStackPanel

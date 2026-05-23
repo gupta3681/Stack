@@ -81,3 +81,11 @@ class TopicStackCreate(BaseModel):
     kind: StackKind
     name: str = Field(min_length=1, max_length=200)
     intention: str | None = None
+
+
+class StackCounts(BaseModel):
+    """Small summary used by the topbar nav badges."""
+
+    today: int
+    tomorrow: int
+    topic_stacks: int

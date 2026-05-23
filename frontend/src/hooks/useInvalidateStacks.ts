@@ -12,6 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
  *   ['topic-stack', stackId]   — topic stack detail (TopicStackView)
  *   ['topic-stacks']           — topic stack list (TopicStackList)
  *   ['overdue', date]          — overdue feed (OverdueSection)
+ *   ['counts', date]           — topbar nav badges
  */
 export function useInvalidateStacks(): () => void {
   const qc = useQueryClient();
@@ -20,5 +21,6 @@ export function useInvalidateStacks(): () => void {
     qc.invalidateQueries({ queryKey: ["topic-stack"] });
     qc.invalidateQueries({ queryKey: ["topic-stacks"] });
     qc.invalidateQueries({ queryKey: ["overdue"] });
+    qc.invalidateQueries({ queryKey: ["counts"] });
   };
 }

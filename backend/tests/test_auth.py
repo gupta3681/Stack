@@ -111,6 +111,82 @@ def test_unsafe_requests_require_csrf_header(client: TestClient):
     assert r.status_code == 403
 
 
+def test_update_profile_display_name(auth_client: TestClient):
+    r = auth_client.patch("/auth/me", json={"display_name": "Renamed"})
+    assert r.status_code == 200
+    assert r.json()["display_name"] == "Renamed"
+    # Persists across reads
+    assert auth_client.get("/auth/me").json()["display_name"] == "Renamed"
+
+
+def test_update_profile_clears_display_name_with_null(auth_client: TestClient):
+    auth_client.patch("/auth/me", json={"display_name": "Set"})
+    r = auth_client.patch("/auth/me", json={"display_name": None})
+    assert r.json()["display_name"] is None
+
+
+def test_update_profile_omit_field_preserves(auth_client: TestClient):
+    auth_client.patch("/auth/me", json={"display_name": "Keep"})
+    r = auth_client.patch("/auth/me", json={})
+    assert r.json()["display_name"] == "Keep"
+
+
+def test_change_password_wrong_current_rejected(auth_client: TestClient):
+    r = auth_client.post(
+        "/auth/change-password",
+        json={"current_password": "wrong-pw", "new_password": "newpassword123"},
+    )
+    assert r.status_code == 401
+
+
+def test_change_password_same_password_rejected(auth_client: TestClient):
+    r = auth_client.post(
+        "/auth/change-password",
+        json={"current_password": "correcthorse", "new_password": "correcthorse"},
+    )
+    assert r.status_code == 400
+
+
+def test_change_password_success_then_login_with_new_pw(auth_client: TestClient):
+    r = auth_client.post(
+        "/auth/change-password",
+        json={"current_password": "correcthorse", "new_password": "freshpassword99"},
+    )
+    assert r.status_code == 204
+    # Old password no longer works
+    auth_client.cookies.clear()
+    r = auth_client.post(
+        "/auth/login",
+        json={"email": "aryan@example.com", "password": "correcthorse"},
+    )
+    assert r.status_code == 401
+    # New one does
+    r = auth_client.post(
+        "/auth/login",
+        json={"email": "aryan@example.com", "password": "freshpassword99"},
+    )
+    assert r.status_code == 200
+
+
+def test_new_user_is_not_onboarded(auth_client: TestClient):
+    me = auth_client.get("/auth/me").json()
+    assert me["onboarded"] is False
+
+
+def test_complete_onboarding_flips_flag(auth_client: TestClient):
+    r = auth_client.post("/auth/me/onboarded")
+    assert r.status_code == 200
+    assert r.json()["onboarded"] is True
+    # Persists across reads
+    assert auth_client.get("/auth/me").json()["onboarded"] is True
+
+
+def test_complete_onboarding_is_idempotent(auth_client: TestClient):
+    first = auth_client.post("/auth/me/onboarded").json()
+    second = auth_client.post("/auth/me/onboarded").json()
+    assert first["onboarded_at"] == second["onboarded_at"]
+
+
 def test_login_rate_limit_returns_429(client: TestClient, monkeypatch):
     from app.security import reset_rate_limits
 

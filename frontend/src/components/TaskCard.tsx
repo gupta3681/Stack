@@ -190,18 +190,18 @@ export function TaskCard({ task, positionIndex, moveTarget }: Props) {
           )}
           <button
             type="button"
+            className={`task__check${isDone ? " task__check--checked" : ""}`}
+            aria-label={isDone ? "Mark pending" : "Mark done"}
+            onClick={() => toggleDone.mutate()}
+          />
+          <button
+            type="button"
             className="task__icon task__icon--more"
             aria-label="Edit"
             onClick={() => setEditing(true)}
           >
             ···
           </button>
-          <button
-            type="button"
-            className={`task__check${isDone ? " task__check--checked" : ""}`}
-            aria-label={isDone ? "Mark pending" : "Mark done"}
-            onClick={() => toggleDone.mutate()}
-          />
           <button
             type="button"
             className="task__x"

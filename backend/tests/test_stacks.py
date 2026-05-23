@@ -1,6 +1,6 @@
 """Daily stacks: get/create-on-write semantics, intention, overdue."""
 
-from datetime import date, timedelta
+from datetime import date, timedelta  # noqa: F401
 
 from fastapi.testclient import TestClient
 
@@ -70,6 +70,47 @@ def test_overdue_respects_client_today_param(auth_client: TestClient):
     if long_ago < yesterday:
         assert len(r.json()) == 1
         assert r.json()[0]["title"] == "old task"
+
+
+def test_counts_today_tomorrow_topic_stacks(auth_client: TestClient):
+    today = date.today().isoformat()
+    tomorrow = (date.today() + timedelta(days=1)).isoformat()
+    # 2 today (1 pending, 1 done — done should be excluded)
+    auth_client.post("/tasks", json={"title": "a", "stack_date": today})
+    t = auth_client.post(
+        "/tasks", json={"title": "b", "stack_date": today}
+    ).json()
+    auth_client.patch(f"/tasks/{t['id']}", json={"status": "done"})
+    # 3 tomorrow
+    for title in ("x", "y", "z"):
+        auth_client.post("/tasks", json={"title": title, "stack_date": tomorrow})
+    # 2 topic stacks
+    auth_client.post(
+        "/stacks/topics", json={"kind": "reading", "name": "Sci-Fi"}
+    )
+    auth_client.post(
+        "/stacks/topics", json={"kind": "watching", "name": "Films"}
+    )
+
+    r = auth_client.get(f"/stacks/counts?today={today}")
+    assert r.status_code == 200
+    body = r.json()
+    assert body == {"today": 1, "tomorrow": 3, "topic_stacks": 2}
+
+
+def test_counts_respects_user_scope(
+    auth_client: TestClient, second_client: TestClient
+):
+    today = date.today().isoformat()
+    auth_client.post("/tasks", json={"title": "mine", "stack_date": today})
+    second_client.post("/tasks", json={"title": "theirs", "stack_date": today})
+    second_client.post("/tasks", json={"title": "theirs2", "stack_date": today})
+    assert (
+        auth_client.get(f"/stacks/counts?today={today}").json()["today"] == 1
+    )
+    assert (
+        second_client.get(f"/stacks/counts?today={today}").json()["today"] == 2
+    )
 
 
 def test_overdue_excludes_done_tasks(auth_client: TestClient):

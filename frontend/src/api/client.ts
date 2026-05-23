@@ -5,6 +5,7 @@ import type {
   LoginInput,
   SignupInput,
   Stack,
+  StackCounts,
   Task,
   UpdateTaskInput,
 } from "../types";
@@ -51,6 +52,9 @@ export const api = {
   getTomorrow: () => request<Stack>("/stacks/tomorrow"),
   getOverdue: (today: string) =>
     request<Task[]>(`/stacks/overdue?today=${encodeURIComponent(today)}`),
+
+  getCounts: (today: string) =>
+    request<StackCounts>(`/stacks/counts?today=${encodeURIComponent(today)}`),
 
   listTopicStacks: () => request<Stack[]>("/stacks/topics"),
 
@@ -142,4 +146,19 @@ export const api = {
     }),
 
   logout: () => request<void>("/auth/logout", { method: "POST" }),
+
+  updateProfile: (input: { display_name?: string | null }) =>
+    request<AuthUser>("/auth/me", {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+
+  changePassword: (input: { current_password: string; new_password: string }) =>
+    request<void>("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  completeOnboarding: () =>
+    request<AuthUser>("/auth/me/onboarded", { method: "POST" }),
 };
