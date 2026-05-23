@@ -236,6 +236,8 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build
 
 App on http://localhost:8080 (configurable via `HOST_PORT` in [.env](.env)). Browser sees same origin for app + `/api`. Backend and db have no published ports.
 
+The frontend's nginx proxies `/api/*` to whatever `BACKEND_URL` env var the container is started with. Default is `http://backend:8000/` so local compose Just Works. On a hosted platform (Railway / Fly / Render / etc.) set `BACKEND_URL` to that platform's internal hostname for the backend service, e.g. `http://backend.railway.internal:8000/`. The substitution happens at container startup via [nginx's built-in envsubst on `/etc/nginx/templates/*.template`](frontend/Dockerfile.prod) — no image rebuild needed per environment.
+
 ### Plain Dockerfile production image
 
 ```bash
