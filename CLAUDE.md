@@ -48,7 +48,7 @@ Stack's core moves:
 - ✅ Edit modal (title, description, due date, priority hint)
 - ✅ Dev: SQLite + native `./dev.sh`, OR Postgres + Docker compose
 - ✅ Prod overlay (`docker-compose.prod.yml`): nginx in front, backend/db isolated inside the network
-- ✅ Fly.io target (`Dockerfile.fly` + `fly.toml`): single public nginx port, backend on loopback
+- ✅ Root `Dockerfile`: single-image production build for platforms that detect a standard Dockerfile
 
 ## What's deliberately NOT built (yet)
 
@@ -104,7 +104,7 @@ We don't have a separate service layer or message bus. FastAPI routers call SQLA
 └──────┬─────────────────────┘
        │ 1
        │
-       ├──── N ────► sessions  (id PK = random token, user_id, expires_at)
+       ├──── N ────► sessions  (id PK = SHA-256 token digest, user_id, expires_at)
        │
        ├──── N ────► stacks    (id, user_id, kind, stack_date NULL, name NULL,
        │                        intention NULL)
@@ -140,7 +140,7 @@ Key shape rules:
 - **`HttpOnly` cookie, `SameSite=Lax`, `path=/`.** `Secure` defaults to true when `APP_ENV=production`; it can still be forced with `COOKIE_SECURE`.
 - **Every endpoint** that touches user data uses `Depends(get_current_user)`. Stack/task queries filter by `current_user.id`. Direct task lookups go through `_get_owned_task` which returns 404 (not 403) for foreign tasks to avoid leaking existence.
 - **CSRF defense:** every unsafe request requires `X-Stack-CSRF: 1`; the frontend API client adds it globally. This blocks cross-site form POSTs from using the session cookie.
-- **Auth rate limiting:** login/signup have a small in-process sliding-window limiter. The Fly nginx config also rate-limits login/signup at the proxy.
+- **Auth rate limiting:** login/signup have a small in-process sliding-window limiter. The production nginx config also rate-limits login/signup at the proxy.
 
 The limiter is per process/Machine, not a distributed quota. If this gets real traffic, keep the app-level limiter but add an edge WAF or shared store-backed limiter.
 
@@ -151,14 +151,10 @@ The limiter is per process/Machine, not a distributed quota. If this gets real t
 ```
 Stack/
 ├── CLAUDE.md                ← you are here
-├── Dockerfile.fly           ← Fly.io single-image production target
+├── Dockerfile               ← single-image production target: React + nginx + FastAPI
 ├── design.md                ← Mono design system reference
 ├── docker-compose.yml       ← dev: db + backend (Postgres) + frontend (Vite)
 ├── docker-compose.prod.yml  ← prod overlay: nginx in front, internal-only services
-├── fly.toml                 ← Fly.io app config (edit app/domain before deploy)
-├── deploy/
-│   ├── nginx.fly.conf       ← single-image nginx config + security headers
-│   └── start_fly.py         ← starts uvicorn + nginx in the Fly image
 ├── dev.sh                   ← native dev (SQLite + uvicorn + Vite, no Docker)
 ├── .env                     ← local secrets, gitignored
 ├── .env.example             ← template
@@ -240,18 +236,19 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build
 
 App on http://localhost:8080 (configurable via `HOST_PORT` in [.env](.env)). Browser sees same origin for app + `/api`. Backend and db have no published ports.
 
-### Fly.io
+### Plain Dockerfile production image
 
 ```bash
-# Edit fly.toml first: app name, primary region, CORS_ORIGINS.
-fly launch --no-deploy
-fly postgres create
-fly postgres attach <postgres-app-name>
-fly secrets set DATABASE_URL='postgresql+psycopg://...' COOKIE_SECURE=true APP_ENV=production
-fly deploy
+docker build -t stack .
+docker run --rm -p 8080:8080 \
+  -e APP_ENV=production \
+  -e COOKIE_SECURE=true \
+  -e CORS_ORIGINS=http://localhost:8080 \
+  -e DATABASE_URL='postgresql+psycopg://...' \
+  stack
 ```
 
-The Fly target uses [Dockerfile.fly](Dockerfile.fly): nginx listens on `:8080`, proxies `/api` to FastAPI on loopback `:8000`, and serves the built React bundle. Keep `force_https=true` in [fly.toml](fly.toml) so browser traffic is HTTPS even though Fly forwards plaintext to the Machine internally.
+The root [Dockerfile](Dockerfile) builds the React app, writes the production nginx/startup config into the image, runs FastAPI on loopback `:8000`, and serves the app plus `/api` through nginx on `:8080`. In a hosted deploy, set `APP_ENV=production`, `COOKIE_SECURE=true`, `CORS_ORIGINS` to the public origin, and `DATABASE_URL` to Postgres.
 
 ### Running tests
 
@@ -259,7 +256,7 @@ The Fly target uses [Dockerfile.fly](Dockerfile.fly): nginx listens on `:8080`, 
 cd backend && uv run pytest
 ```
 
-Each test gets a fresh in-memory SQLite database via [conftest.py](backend/tests/conftest.py). The `client` fixture is a TestClient with the `get_db` dependency overridden. The `auth_client` fixture is the same but already signed up as `aryan@example.com`. The `second_client` is a separate TestClient (own cookie jar) signed up as `other@example.com` — used for multi-tenant isolation tests.
+Each test gets a fresh in-memory SQLite database via [conftest.py](backend/tests/conftest.py). The `client` fixture is a TestClient with the `get_db` dependency overridden. The `auth_client` fixture is the same but already signed up as `aryan@example.com`. The `second_client` is a separate TestClient (own cookie jar) signed up as `other@example.com` — used for multi-tenant isolation tests. Current suite size: 48 tests.
 
 When adding new endpoints or behaviors, add a test in the matching `test_*.py` file. The suite runs in ~12s and is the cheapest possible regression net.
 
@@ -321,7 +318,6 @@ Not bugs we're blocked on — just real things flagged by code review that haven
 - **`OverdueSection` shows "from earlier"** generically because `TaskOut` doesn't expose `stack_date`. Add the field to the schema to surface real dates.
 - **Cancelling a done task destroys `completed_at`.** No `cancelled_at` column; the only completion timestamp is lost.
 - **Mutations other than `stackQuery` don't auto-logout on 401.** Only the stack-query 401 hook in App.tsx kicks the user to login.
-- **`api/client.ts` headers merge** — caller-supplied `headers` shallow-replaces the default Content-Type. Latent (no current caller triggers it).
 - **No real migrations.** `Base.metadata.create_all` + idempotent ALTERs is fine for the current scale but will bite the first time we need a column rename, type change, or backfill.
 
 ---
