@@ -1,0 +1,83 @@
+"""Daily stacks: get/create-on-write semantics, intention, overdue."""
+
+from datetime import date, timedelta
+
+from fastapi.testclient import TestClient
+
+
+def test_get_unknown_date_returns_synthetic_empty(auth_client: TestClient):
+    r = auth_client.get("/stacks/2099-12-31")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["id"] is None  # not persisted
+    assert body["stack_date"] == "2099-12-31"
+    assert body["tasks"] == []
+
+
+def test_get_stack_does_not_write_a_row(auth_client: TestClient):
+    """Regression: GETs used to silently INSERT, allowing table flood."""
+    for d in ("2099-01-01", "2099-01-02", "2099-01-03"):
+        auth_client.get(f"/stacks/{d}")
+    # If GETs created rows, /stacks/topics or any list query would see them.
+    # We can't list daily stacks directly; instead confirm no row exists by
+    # checking the synthetic id stays None on the most-recently-fetched date.
+    body = auth_client.get("/stacks/2099-01-01").json()
+    assert body["id"] is None
+
+
+def test_creating_a_task_for_a_date_persists_the_stack(auth_client: TestClient):
+    auth_client.post(
+        "/tasks", json={"title": "first", "stack_date": "2026-06-01"}
+    )
+    body = auth_client.get("/stacks/2026-06-01").json()
+    assert body["id"] is not None
+    assert len(body["tasks"]) == 1
+    assert body["tasks"][0]["title"] == "first"
+
+
+def test_patch_intention_creates_the_stack(auth_client: TestClient):
+    r = auth_client.patch(
+        "/stacks/2026-06-01", json={"intention": "ship the thing"}
+    )
+    assert r.status_code == 200
+    assert r.json()["intention"] == "ship the thing"
+
+
+def test_patch_intention_with_null_clears_it(auth_client: TestClient):
+    auth_client.patch("/stacks/2026-06-01", json={"intention": "ship"})
+    r = auth_client.patch("/stacks/2026-06-01", json={"intention": None})
+    assert r.json()["intention"] is None
+
+
+def test_today_endpoint_auto_creates(auth_client: TestClient):
+    r = auth_client.get("/stacks/today")
+    assert r.status_code == 200
+    assert r.json()["id"] is not None  # /today always persists
+    assert r.json()["stack_date"] == date.today().isoformat()
+
+
+def test_overdue_respects_client_today_param(auth_client: TestClient):
+    """Overdue cutoff must respect the client's local 'today', not the server's."""
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    long_ago = "2026-01-01"
+    auth_client.post("/tasks", json={"title": "old task", "stack_date": long_ago})
+    # Cutoff before the task's stack_date: not yet overdue
+    r = auth_client.get(f"/stacks/overdue?today={long_ago}")
+    assert r.status_code == 200
+    assert len(r.json()) == 0
+    # Cutoff after: now overdue
+    r = auth_client.get(f"/stacks/overdue?today={yesterday}")
+    if long_ago < yesterday:
+        assert len(r.json()) == 1
+        assert r.json()[0]["title"] == "old task"
+
+
+def test_overdue_excludes_done_tasks(auth_client: TestClient):
+    long_ago = "2026-01-01"
+    t = auth_client.post(
+        "/tasks", json={"title": "done already", "stack_date": long_ago}
+    ).json()
+    auth_client.patch(f"/tasks/{t['id']}", json={"status": "done"})
+    today = date.today().isoformat()
+    r = auth_client.get(f"/stacks/overdue?today={today}")
+    assert len(r.json()) == 0

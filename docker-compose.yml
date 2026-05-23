@@ -1,0 +1,62 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-stack}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-stack}
+    ports:
+      - "5432:5432"
+    volumes:
+      - stack_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stack} -d ${POSTGRES_DB:-stack}"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-stack}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-stack}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    # Dev mode: hot-reload on Python file changes.
+    command: ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    # Bind-mount source so edits propagate into the container. Only mount the
+    # `app/` directory, not the whole `backend/` — that would shadow the venv
+    # and pyproject layer baked into the image.
+    volumes:
+      - ./backend/app:/app/app
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      # Inside Docker, the backend is reachable at the service name "backend",
+      # not at localhost (which would be the frontend container itself).
+      VITE_PROXY_TARGET: http://backend:8000
+      # macOS Docker file-event watching is flaky; poll instead.
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      # Bind-mount the source so Vite picks up your edits and hot-reloads.
+      - ./frontend:/app
+      # Anonymous volume shadows the host's node_modules — we want the
+      # container's own (Linux-compatible) install, not the host's.
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+
+volumes:
+  stack_pgdata:

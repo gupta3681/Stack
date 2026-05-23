@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# SQLite
+*.db
+*.db-journal
+
+# Node
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Env
+.env
+.env.local
+
+# Per-machine Claude Code settings (launch.json IS shared, settings.local.json is not)
+.claude/settings.local.json

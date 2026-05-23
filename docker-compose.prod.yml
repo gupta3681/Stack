@@ -1,0 +1,38 @@
+# Production overlay. Applied on top of docker-compose.yml:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build
+#
+# What it changes:
+#   • db        — drops the published 5432 port; only reachable inside the
+#                 docker network.
+#   • backend   — drops the published 8000 port; only reachable inside the
+#                 docker network via nginx's /api proxy.
+#   • frontend  — switches from Vite dev container to a multi-stage build
+#                 that compiles the static bundle and serves it (plus /api
+#                 proxy) via nginx. The bind-mount + dev env from
+#                 docker-compose.yml are reset.
+#
+# Result: only the nginx port (HOST_PORT, default 8080) is exposed to the
+# host. Database and API are not directly reachable from outside the network.
+
+services:
+  db:
+    ports: !reset []
+
+  backend:
+    ports: !reset []
+    # Prod runs the image's baked-in CMD without --reload, and without the
+    # dev bind-mount (so the container ships the code that was built into it).
+    command: !reset null
+    volumes: !reset []
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    # Reset dev-only settings inherited from docker-compose.yml
+    volumes: !reset []
+    environment: !reset {}
+    # !override REPLACES the dev ports (5173) instead of merging with them.
+    ports: !override
+      - "${HOST_PORT:-8080}:80"
