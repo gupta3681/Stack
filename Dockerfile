@@ -85,7 +85,10 @@ http {
             proxy_http_version 1.1;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $remote_addr;
+            # Append, don't overwrite — preserves the user's IP through any
+            # front proxy (Cloudflare/Railway/etc.). Backend's _client_ip
+            # uses TRUSTED_PROXY_HOPS to pick the right entry safely.
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
             proxy_set_header Connection "";
         }
@@ -96,7 +99,7 @@ http {
             proxy_http_version 1.1;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
             proxy_set_header Connection "";
         }

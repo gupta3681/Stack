@@ -10,6 +10,7 @@ import { StackView } from "./components/StackView";
 import { AboutPage } from "./components/AboutPage";
 import { OverdueSection } from "./components/OverdueSection";
 import { OnboardingTips } from "./components/OnboardingTips";
+import { PublicStackView } from "./components/PublicStackView";
 import { TopicStackList } from "./components/TopicStackList";
 import { TopicStackView } from "./components/TopicStackView";
 
@@ -176,8 +177,22 @@ function DailyStackPanel({ view, today, tomorrow, logout }: DailyPanelProps) {
   );
 }
 
+/** Match /s/<slug> in the URL. Slug is the only segment we care about; we
+ * don't introduce react-router for one public route. */
+function getPublicSlug(): string | null {
+  const m = window.location.pathname.match(/^\/s\/([A-Za-z0-9_-]+)\/?$/);
+  return m ? m[1] : null;
+}
+
 export default function App() {
   const { status } = useAuth();
+
+  // Public shared stack — bypass the auth gate entirely. No cookie needed,
+  // no login flow, no AuthedApp chrome.
+  const publicSlug = getPublicSlug();
+  if (publicSlug) {
+    return <PublicStackView slug={publicSlug} />;
+  }
 
   if (status === "loading") {
     return <div className="boot-screen">—</div>;

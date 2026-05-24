@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { useInvalidateStacks } from "../hooks/useInvalidateStacks";
 import { TOPIC_KINDS, type PriorityHint } from "../types";
+import { ShareModal } from "./ShareModal";
 import { StackView } from "./StackView";
 
 interface Props {
@@ -31,6 +32,7 @@ export function TopicStackView({ stackId, todayDate, onBack }: Props) {
   });
   const [title, setTitle] = useState("");
   const [hint, setHint] = useState<PriorityHint>("normal");
+  const [shareOpen, setShareOpen] = useState(false);
 
   const create = useMutation({
     mutationFn: () =>
@@ -64,12 +66,18 @@ export function TopicStackView({ stackId, todayDate, onBack }: Props) {
       <header className="stack-head">
         <div className="stack-head__date">
           {kindLabel(stack.kind).toUpperCase()} · STACK
+          {stack.is_public && (
+            <span className="stack-head__badge"> · Public</span>
+          )}
         </div>
         <div className="topics__head">
           <h1 className="stack-head__title">{stack.name}</h1>
           <div className="topics__head-actions">
             <button type="button" onClick={onBack}>
               ← All stacks
+            </button>
+            <button type="button" onClick={() => setShareOpen(true)}>
+              {stack.is_public ? "Public ↗" : "Share"}
             </button>
             <button
               type="button"
@@ -89,6 +97,12 @@ export function TopicStackView({ stackId, todayDate, onBack }: Props) {
           </div>
         </div>
       </header>
+
+      <ShareModal
+        stack={stack}
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+      />
 
       <form
         className="qc"

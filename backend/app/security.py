@@ -25,9 +25,34 @@ def _env_int(name: str, default: int) -> int:
 
 
 def _client_ip(request: Request) -> str:
-    forwarded_for = request.headers.get("x-forwarded-for")
-    if forwarded_for:
-        return forwarded_for.split(",", 1)[0].strip()
+    """Identify the client IP for rate-limit bucketing.
+
+    Strategy chain — first match wins:
+
+    1. `X-Envoy-External-Address` — set by Envoy edge proxies (Railway, Fly,
+       anything fronted by Envoy). A single non-chain header containing the
+       real external client IP. Envoy overwrites it, so the user can't
+       spoof. This is Railway's officially recommended source.
+
+    2. `X-Forwarded-For` — generic proxy chain. Each proxy appends the IP
+       it saw; the N-th entry from the right is what the *first* trusted
+       proxy observed (the real user). `TRUSTED_PROXY_HOPS` tells us N.
+       Without that env var we ignore XFF entirely — anything in it could
+       be client-injected.
+
+    3. TCP peer — local dev and any setup with no proxy at all.
+    """
+    envoy_addr = request.headers.get("x-envoy-external-address")
+    if envoy_addr and envoy_addr.strip():
+        return envoy_addr.strip()
+
+    trusted_hops = _env_int("TRUSTED_PROXY_HOPS", 0)
+    if trusted_hops > 0:
+        xff = request.headers.get("x-forwarded-for", "")
+        parts = [p.strip() for p in xff.split(",") if p.strip()]
+        if len(parts) >= trusted_hops:
+            return parts[-trusted_hops]
+
     if request.client is not None:
         return request.client.host
     return "unknown"
@@ -96,6 +121,21 @@ def check_signup_rate_limit(request: Request) -> None:
         "signup-ip",
         max_attempts=_env_int("AUTH_RATE_LIMIT_SIGNUP_IP_ATTEMPTS", 10),
         window_seconds=_env_int("AUTH_RATE_LIMIT_SIGNUP_WINDOW_SECONDS", 60 * 60),
+    )
+
+
+def check_public_read_rate_limit(request: Request) -> None:
+    """Throttle anonymous reads of /public/* endpoints.
+
+    Public unauth endpoints are the canonical scrape/DoS target. Generous
+    enough for normal browsing (real visitors load a page once), tight
+    enough to slow down enumeration/scraping.
+    """
+    check_rate_limit(
+        request,
+        "public-read-ip",
+        max_attempts=_env_int("PUBLIC_READ_RATE_LIMIT_IP_ATTEMPTS", 60),
+        window_seconds=_env_int("PUBLIC_READ_RATE_LIMIT_WINDOW_SECONDS", 60),
     )
 
 

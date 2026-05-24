@@ -825,6 +825,102 @@ textarea:focus {
   padding: 8px 12px;
 }
 
+/* ── Share modal + Public badge ── */
+
+.stack-head__badge {
+  font-family: var(--font-cond);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.share__status {
+  font-family: var(--font-nh);
+  font-size: 16px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin: 0;
+  padding-bottom: 4px;
+}
+
+.share__status--public {
+  font-weight: 400;
+}
+
+.share__url-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.share__url {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  border: 1px solid var(--ink);
+  padding: 8px 10px;
+  color: var(--deep);
+  background: var(--canvas);
+}
+
+.share__url:focus {
+  outline: none;
+  border-color: var(--deep);
+}
+
+.share__hint {
+  font-family: var(--font-nh);
+  font-weight: 300;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  line-height: 1.5;
+  color: var(--ink);
+  opacity: 0.7;
+  margin: 0;
+}
+
+.share__hint code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  border-bottom: 1px solid var(--ink);
+  padding: 0 2px;
+  word-break: break-all;
+}
+
+/* ── Public stack viewer ── */
+
+.public-empty {
+  border: 1px solid var(--ink);
+  padding: 60px 20px;
+  text-align: center;
+  font-family: var(--font-ev);
+  font-weight: 100;
+  font-size: 22px;
+  letter-spacing: -0.05em;
+  color: var(--ink);
+}
+
+.public-footer {
+  border-top: 1px solid var(--ink);
+  padding-top: 16px;
+  margin-top: 40px;
+}
+
+.public-footer p {
+  font-family: var(--font-cond);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  opacity: 0.6;
+  margin: 0;
+}
+
+.public-footer a {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
 /* ── Onboarding tips card ── */
 
 .onboarding {
@@ -1318,6 +1414,11 @@ textarea:focus {
   font-size: 16px;
   letter-spacing: -0.02em;
   margin: 0;
+}
+
+.overdue-task__actions {
+  display: flex;
+  gap: 8px;
 }
 
 /* ─── Mobile / responsive ───

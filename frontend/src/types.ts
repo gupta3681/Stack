@@ -44,6 +44,27 @@ export interface Stack {
   name: string | null;
   intention: string | null;
   tasks: Task[];
+  // Topic-stack sharing. is_public toggles availability of the slug-based URL.
+  // share_slug is generated on first share and persists across un-share /
+  // re-share cycles (same URL each time).
+  is_public: boolean;
+  share_slug: string | null;
+}
+
+export interface PublicTask {
+  title: string;
+  description: string | null;
+  priority_hint: PriorityHint | null;
+  due_at: string | null;
+  position: number;
+}
+
+export interface PublicStack {
+  kind: StackKind;
+  name: string;
+  intention: string | null;
+  owner_display_name: string | null;
+  tasks: PublicTask[];
 }
 
 export interface CreateTopicStackInput {

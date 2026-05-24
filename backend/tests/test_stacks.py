@@ -122,3 +122,16 @@ def test_overdue_excludes_done_tasks(auth_client: TestClient):
     today = date.today().isoformat()
     r = auth_client.get(f"/stacks/overdue?today={today}")
     assert len(r.json()) == 0
+
+
+def test_overdue_excludes_cancelled_tasks(auth_client: TestClient):
+    """Dismissing an overdue item from the UI sets status=cancelled.
+    Cancelled tasks must drop out of the overdue feed."""
+    long_ago = "2026-01-01"
+    t = auth_client.post(
+        "/tasks", json={"title": "not gonna happen", "stack_date": long_ago}
+    ).json()
+    auth_client.patch(f"/tasks/{t['id']}", json={"status": "cancelled"})
+    today = date.today().isoformat()
+    r = auth_client.get(f"/stacks/overdue?today={today}")
+    assert len(r.json()) == 0

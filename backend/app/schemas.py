@@ -70,6 +70,8 @@ class StackOut(BaseModel):
     name: str | None = None
     intention: str | None
     tasks: list[TaskOut]
+    is_public: bool = False
+    share_slug: str | None = None
 
 
 class StackUpdate(BaseModel):
@@ -89,3 +91,34 @@ class StackCounts(BaseModel):
     today: int
     tomorrow: int
     topic_stacks: int
+
+
+class PublicTaskOut(BaseModel):
+    """Read-only view of a task, exposed on a public stack page.
+
+    Fields deliberately omitted to avoid leaking owner-internal state:
+      - status, completed_at, in_progress_started_at, accumulated_seconds
+      - stack_id, user_id, created_at, updated_at
+    Anything that says "this is what the owner is actively doing right now"
+    is omitted; visitors see what's queued, not the operational state.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    title: str
+    description: str | None
+    priority_hint: PriorityHint | None
+    due_at: datetime | None
+    position: int
+
+
+class PublicStackOut(BaseModel):
+    """The shape served at GET /public/stacks/{slug} (no auth required)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    kind: StackKind
+    name: str
+    intention: str | None
+    owner_display_name: str | None
+    tasks: list[PublicTaskOut]

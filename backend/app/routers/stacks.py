@@ -1,3 +1,4 @@
+import secrets
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -10,6 +11,16 @@ from ..auth import get_current_user
 from ..database import get_db
 
 router = APIRouter(prefix="/stacks", tags=["stacks"])
+
+
+def _generate_share_slug() -> str:
+    """URL-safe ~11-char identifier, e.g. 'xK_9aP3-bRq'.
+
+    With 8 bytes of entropy (~64 bits), collision is statistically irrelevant
+    even at millions of slugs. We also enforce uniqueness at the DB level,
+    so a collision would raise IntegrityError on commit — the caller retries.
+    """
+    return secrets.token_urlsafe(8)
 
 
 def _select_stack(user_id: int, stack_date: date):
@@ -212,6 +223,60 @@ def delete_topic_stack(
         raise HTTPException(status_code=404, detail="Stack not found")
     db.delete(stack)
     db.commit()
+
+
+@router.post("/topics/{stack_id}/share", response_model=schemas.StackOut)
+def share_topic_stack(
+    stack_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Flip is_public=true. Generate share_slug if this is the first share.
+
+    Re-sharing a previously-shared stack returns the same slug (Notion-style).
+    Slug-collision retry: if our random slug happens to clash (statistically
+    impossible at this scale but possible), regenerate and try again.
+    """
+    stack = find_topic_stack(db, current_user.id, stack_id)
+    if stack is None:
+        raise HTTPException(status_code=404, detail="Stack not found")
+    if stack.share_slug is None:
+        # db.rollback() expires every attribute on `stack`, so is_public must
+        # be re-applied inside the loop or a retried commit will write the
+        # default (False) along with the new slug.
+        for _ in range(5):
+            stack.is_public = True
+            stack.share_slug = _generate_share_slug()
+            try:
+                db.commit()
+                break
+            except IntegrityError:
+                db.rollback()
+        else:
+            raise HTTPException(
+                status_code=500, detail="Could not generate a unique share slug"
+            )
+    else:
+        stack.is_public = True
+        db.commit()
+    db.refresh(stack)
+    return stack
+
+
+@router.post("/topics/{stack_id}/unshare", response_model=schemas.StackOut)
+def unshare_topic_stack(
+    stack_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Flip is_public=false. KEEP the slug so re-sharing yields the same URL."""
+    stack = find_topic_stack(db, current_user.id, stack_id)
+    if stack is None:
+        raise HTTPException(status_code=404, detail="Stack not found")
+    stack.is_public = False
+    db.commit()
+    db.refresh(stack)
+    return stack
 
 
 @router.get("/counts", response_model=schemas.StackCounts)

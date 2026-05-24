@@ -3,6 +3,7 @@ import type {
   CreateTaskInput,
   CreateTopicStackInput,
   LoginInput,
+  PublicStack,
   SignupInput,
   Stack,
   StackCounts,
@@ -75,6 +76,15 @@ export const api = {
 
   deleteTopicStack: (stackId: number) =>
     request<void>(`/stacks/topics/${stackId}`, { method: "DELETE" }),
+
+  shareTopicStack: (stackId: number) =>
+    request<Stack>(`/stacks/topics/${stackId}/share`, { method: "POST" }),
+
+  unshareTopicStack: (stackId: number) =>
+    request<Stack>(`/stacks/topics/${stackId}/unshare`, { method: "POST" }),
+
+  getPublicStack: (slug: string) =>
+    request<PublicStack>(`/public/stacks/${encodeURIComponent(slug)}`),
 
   updateStackIntention: (stackDate: string, intention: string | null) =>
     request<Stack>(`/stacks/${stackDate}`, {

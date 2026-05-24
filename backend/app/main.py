@@ -6,7 +6,7 @@ from sqlalchemy import inspect, text
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from .database import Base, engine
-from .routers import auth, stacks, tasks
+from .routers import auth, public, stacks, tasks
 from .security import enforce_csrf_header
 
 
@@ -80,6 +80,41 @@ def _migrate_add_stack_kind_columns() -> None:
                 pass
 
 
+def _migrate_add_stack_sharing_columns() -> None:
+    """Additive migration: stacks.is_public + stacks.share_slug.
+
+    Existing rows default to is_public=false, share_slug=NULL — so nothing
+    becomes public by accident. Safe to run repeatedly.
+    """
+    inspector = inspect(engine)
+    if "stacks" not in inspector.get_table_names():
+        return
+    columns = {c["name"] for c in inspector.get_columns("stacks")}
+    statements: list[str] = []
+    if "is_public" not in columns:
+        statements.append(
+            "ALTER TABLE stacks ADD COLUMN is_public BOOLEAN NOT NULL DEFAULT FALSE"
+        )
+    if "share_slug" not in columns:
+        statements.append("ALTER TABLE stacks ADD COLUMN share_slug VARCHAR(20)")
+        # Both Postgres and SQLite treat NULL as distinct in unique indexes,
+        # so a plain CREATE UNIQUE INDEX lets multiple unshared stacks coexist
+        # with share_slug=NULL. Fresh DBs get this index from the model's
+        # unique=True; IF NOT EXISTS handles the upgrade case here.
+        statements.append(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_stacks_share_slug "
+            "ON stacks (share_slug)"
+        )
+    if not statements:
+        return
+    with engine.begin() as conn:
+        for sql in statements:
+            try:
+                conn.execute(text(sql))
+            except (OperationalError, ProgrammingError):
+                pass
+
+
 def _migrate_add_user_onboarded_at() -> None:
     """Additive migration: users.onboarded_at — null on existing rows.
 
@@ -105,6 +140,7 @@ def _migrate_add_user_onboarded_at() -> None:
 _drop_pre_auth_tables_if_needed()
 Base.metadata.create_all(bind=engine)
 _migrate_add_stack_kind_columns()
+_migrate_add_stack_sharing_columns()
 _migrate_add_user_onboarded_at()
 
 
@@ -128,6 +164,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(stacks.router)
 app.include_router(tasks.router)
+app.include_router(public.router)
 
 
 @app.get("/health")

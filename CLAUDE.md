@@ -32,7 +32,7 @@ Stack's core moves:
 
 ### Where this is going
 
-- **Shareable stacks** (planned). A topic stack like "Sci-Fi reading" should be publishable read-only. Social discovery: "what's on Alice's reading stack?"
+- **Shareable stacks** (v1 shipped). Topic stacks can be flipped public via `POST /stacks/topics/{id}/share`, get a random ~11-char slug, and render at `/s/<slug>` for anyone — no auth required. The public view hides done/cancelled tasks and operational state (timer, completed_at, etc.). Still TODO: discovery (browse other users' public stacks), user profile pages, comments.
 - **AI stack agent** (planned). Looks at your stacks plus context you drop in ("the deadline moved up", "I have 2 hours free") and proposes a re-stacking with explanations. The shape of `task_events` (priority history) and `context_drops` will support this — neither is implemented yet.
 
 ---
@@ -51,6 +51,7 @@ Stack's core moves:
 - ✅ Task counts in topbar nav (`Today (3)`, `Tomorrow (5)`, `Stacks (4)`)
 - ✅ First-run onboarding tips card (no library tour — dismissable Mono card)
 - ✅ About page (vision, sharing roadmap, AI agent roadmap)
+- ✅ Shareable topic stacks via random slug, read-only public viewer at `/s/<slug>`
 - ✅ Dev: SQLite + native `./dev.sh`, OR Postgres + Docker compose
 - ✅ Prod overlay (`docker-compose.prod.yml`): nginx in front, backend/db isolated inside the network
 - ✅ Deployed on Railway (single-image root `Dockerfile` + managed Postgres)
@@ -58,7 +59,7 @@ Stack's core moves:
 
 ## What's deliberately NOT built (yet)
 
-- Sharing / public stacks / social
+- Discovery / browse other users' public stacks / user profile pages
 - AI stack agent
 - Push notifications / reminders
 - Mobile app (the responsive web isn't great yet)
@@ -147,6 +148,12 @@ Key shape rules:
 - **Every endpoint** that touches user data uses `Depends(get_current_user)`. Stack/task queries filter by `current_user.id`. Direct task lookups go through `_get_owned_task` which returns 404 (not 403) for foreign tasks to avoid leaking existence.
 - **CSRF defense:** every unsafe request requires `X-Stack-CSRF: 1`; the frontend API client adds it globally. This blocks cross-site form POSTs from using the session cookie.
 - **Auth rate limiting:** login/signup have a small in-process sliding-window limiter. The production nginx config also rate-limits login/signup at the proxy.
+- **Public-read rate limiting:** `/public/stacks/{slug}` is throttled per IP (defaults 60/min). Defends against scrape/enumeration of shared content. Tunable via `PUBLIC_READ_RATE_LIMIT_IP_ATTEMPTS` and `PUBLIC_READ_RATE_LIMIT_WINDOW_SECONDS`.
+- **Client-IP resolution (`_client_ip()`):** strategy chain, first match wins:
+  1. `X-Envoy-External-Address` — set by Envoy edge proxies (Railway, Fly, etc.). Single trustworthy header that Envoy overwrites; client can't spoof. **On Railway no extra config is needed — this header lights up automatically.**
+  2. `X-Forwarded-For` — for non-Envoy deploys. The backend reads the N-th entry from the right of XFF where N = `TRUSTED_PROXY_HOPS` env var. Default 0 = ignore XFF entirely (safe for dev / direct deploys). Set to `1` when only your own nginx is in front; set to `2` behind a non-Envoy CDN → nginx. Wrong N either bucket-merges all users or trusts a client-supplied value.
+  3. TCP peer — local dev / no proxy.
+- nginx is also configured to *append* (not overwrite) `X-Forwarded-For` via `$proxy_add_x_forwarded_for`, so the chain through any front proxy survives intact.
 
 The limiter is per process/Machine, not a distributed quota. If this gets real traffic, keep the app-level limiter but add an edge WAF or shared store-backed limiter.
 

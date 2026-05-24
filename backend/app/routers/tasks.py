@@ -190,6 +190,10 @@ def update_task(
             _commit_elapsed_if_running(task)
             if task.completed_at is None:
                 task.completed_at = _now()
+        elif fields["status"] == models.TaskStatus.cancelled:
+            # Cancelling preserves completed_at — a previously-done task that
+            # gets cancelled shouldn't lose its completion timestamp.
+            _commit_elapsed_if_running(task)
         else:
             task.completed_at = None
             if fields["status"] != models.TaskStatus.in_progress:

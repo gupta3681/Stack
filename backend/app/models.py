@@ -10,6 +10,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -86,6 +87,17 @@ class Stack(Base):
     name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     intention: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    # Sharing: a topic stack can be made publicly readable via a stable slug.
+    # `is_public` is the toggle; `share_slug` is the URL-safe public identifier.
+    # The slug is generated on first share and kept forever (re-sharing yields
+    # the same URL — Notion-style). Only topic stacks can be made public.
+    is_public: Mapped[bool] = mapped_column(
+        default=False, server_default=false(), nullable=False
+    )
+    share_slug: Mapped[str | None] = mapped_column(
+        String(20), unique=True, index=True, nullable=True
+    )
 
     # No delete-orphan: setting task.stack_id=None (move to backlog) must NOT
     # delete the task. Stack deletion is handled by the FK's ondelete=SET NULL.

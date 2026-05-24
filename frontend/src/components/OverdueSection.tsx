@@ -19,6 +19,15 @@ export function OverdueSection({ todayDate }: Props) {
     onSuccess: () => invalidateStacks(),
   });
 
+  // Dismiss = "I'm not doing this." Sets status=cancelled so the task drops
+  // out of the overdue query (which filters to pending/in_progress only)
+  // without claiming you completed it. The task row is preserved.
+  const dismiss = useMutation({
+    mutationFn: (id: number) =>
+      api.updateTask(id, { status: "cancelled" }),
+    onSuccess: () => invalidateStacks(),
+  });
+
   const tasks = (data ?? []) as Task[];
   if (tasks.length === 0) return null;
 
@@ -34,9 +43,23 @@ export function OverdueSection({ todayDate }: Props) {
             <span className="overdue-task__date">
               from {formatShort(t.stack_id)}
             </span>
-            <button type="button" onClick={() => pull.mutate(t.id)}>
-              Pull to today
-            </button>
+            <div className="overdue-task__actions">
+              <button
+                type="button"
+                onClick={() => pull.mutate(t.id)}
+                disabled={pull.isPending}
+              >
+                Pull to today
+              </button>
+              <button
+                type="button"
+                onClick={() => dismiss.mutate(t.id)}
+                disabled={dismiss.isPending}
+                aria-label={`Dismiss ${t.title}`}
+              >
+                Dismiss
+              </button>
+            </div>
           </li>
         ))}
       </ul>
