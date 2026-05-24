@@ -8,6 +8,9 @@ RUN npm ci
 
 COPY tsconfig.json vite.config.ts index.html ./
 COPY src ./src
+# Vite copies anything in public/ verbatim into dist/ — favicon, robots.txt,
+# any other static asset. Missing this line means /favicon.svg 404s in prod.
+COPY public ./public
 RUN npm run build
 
 

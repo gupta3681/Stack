@@ -6,6 +6,9 @@ COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm ci
 COPY frontend/tsconfig.json frontend/vite.config.ts frontend/index.html ./
 COPY frontend/src ./src
+# Vite copies anything in public/ verbatim into dist/ — favicon, robots.txt,
+# any other static asset. Missing this line means /favicon.svg 404s in prod.
+COPY frontend/public ./public
 RUN npm run build
 
 
