@@ -1361,6 +1361,380 @@ textarea:focus {
   color: var(--ink);
 }
 
+/* ── Landing page (anonymous visitors) ── */
+
+.landing {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 32px 80px;
+  color: var(--ink);
+}
+
+.landing__topbar {
+  border-bottom: 1px solid var(--ink);
+  padding-bottom: 16px;
+  margin-bottom: 56px;
+}
+
+.landing__brand-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.landing__logo {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.landing__logo rect {
+  fill: var(--ink);
+}
+
+.landing__brand {
+  font-family: var(--font-works);
+  font-size: 40px;
+  letter-spacing: 0.05em;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.landing__hero {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 56px;
+  align-items: start;
+  margin-bottom: 80px;
+}
+
+.landing__hero-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.landing__eyebrow {
+  font-family: var(--font-cond);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  opacity: 0.7;
+}
+
+.landing__tagline {
+  font-family: var(--font-ev);
+  font-weight: 100;
+  font-size: 72px;
+  line-height: 0.95;
+  letter-spacing: -0.05em;
+  color: var(--deep);
+  margin: 0;
+}
+
+.landing__lede {
+  font-family: var(--font-nh);
+  font-weight: 300;
+  font-size: 17px;
+  line-height: 1.55;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 0;
+  max-width: 52ch;
+}
+
+.landing__lede em {
+  font-style: italic;
+}
+
+.landing__hero-auth {
+  border: 1px solid var(--ink);
+  padding: 28px;
+  background: var(--canvas);
+}
+
+.landing__auth-eyebrow {
+  font-family: var(--font-cond);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  border-bottom: 1px solid var(--ink);
+  padding-bottom: 10px;
+  margin-bottom: 18px;
+}
+
+.landing__auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.landing__auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.landing__auth-label {
+  font-family: var(--font-cond);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.landing__auth-field input {
+  font-family: var(--font-nh);
+  font-size: 14px;
+  border: 1px solid var(--ink);
+  padding: 8px 10px;
+  background: var(--canvas);
+  color: var(--deep);
+}
+
+.landing__auth-field input:focus {
+  outline: none;
+  border-color: var(--deep);
+  border-width: 1px;
+}
+
+.landing__auth-error {
+  font-family: var(--font-nh);
+  font-size: 13px;
+  color: var(--deep);
+  background: transparent;
+  border: 1px solid var(--ink);
+  padding: 8px 10px;
+}
+
+.landing__auth-submit {
+  font-family: var(--font-cond);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  background: var(--ink);
+  color: var(--canvas);
+  border: 1px solid var(--ink);
+  padding: 12px 16px;
+  cursor: pointer;
+  margin-top: 6px;
+}
+
+.landing__auth-submit:hover:not(:disabled) {
+  background: var(--deep);
+}
+
+.landing__auth-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.landing__auth-toggle {
+  font-family: var(--font-nh);
+  font-size: 13px;
+  color: var(--ink);
+  opacity: 0.8;
+  margin: 16px 0 0;
+  text-align: center;
+}
+
+.landing__auth-toggle-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--deep);
+  font-family: var(--font-nh);
+  font-size: 13px;
+  font-weight: 500;
+  border-bottom: 1px solid var(--ink);
+  cursor: pointer;
+}
+
+.landing__auth-toggle-btn:hover {
+  color: var(--ink);
+}
+
+.landing__demo {
+  margin-bottom: 80px;
+}
+
+.landing__demo-caption {
+  font-family: var(--font-cond);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  opacity: 0.6;
+  margin-bottom: 16px;
+}
+
+.landing__demo-card {
+  border: 1px solid var(--ink);
+  padding: 24px 28px 28px;
+  background: var(--canvas);
+}
+
+/* Disable any interactive cursor on the demo stack — visitors can't drag it. */
+.landing__demo-tasks .task__pos,
+.landing__demo-tasks .task__body {
+  cursor: default !important;
+}
+
+.landing__features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+  margin-bottom: 80px;
+}
+
+.landing__feature {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--ink);
+  padding-top: 14px;
+}
+
+.landing__feature-label {
+  font-family: var(--font-cond);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  opacity: 0.75;
+}
+
+.landing__feature-title {
+  font-family: var(--font-nh);
+  font-weight: 300;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--deep);
+}
+
+.landing__feature-body {
+  font-family: var(--font-nh);
+  font-weight: 300;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink);
+  margin: 0;
+}
+
+.landing__feature-body code,
+.landing__vision-body code,
+.landing__vision-anchor code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  border-bottom: 1px solid var(--ink);
+  padding: 0 2px;
+  word-break: break-all;
+}
+
+/* ── Landing "What's coming next" section ── */
+
+.landing__vision {
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+  padding: 40px 0 48px;
+  margin-bottom: 80px;
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 40px;
+  align-items: start;
+}
+
+.landing__vision-label {
+  font-family: var(--font-cond);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  opacity: 0.7;
+}
+
+.landing__vision-title {
+  font-family: var(--font-ev);
+  font-weight: 100;
+  font-size: 42px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--deep);
+  margin: 6px 0 0;
+  grid-column: 1;
+}
+
+.landing__vision-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  font-family: var(--font-nh);
+  font-weight: 300;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+.landing__vision-body p {
+  margin: 0;
+}
+
+.landing__vision-body em {
+  font-style: italic;
+}
+
+.landing__vision-anchor {
+  border-top: 1px solid var(--ink);
+  padding-top: 14px;
+  opacity: 0.85;
+}
+
+.landing__footer {
+  border-top: 1px solid var(--ink);
+  padding-top: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.landing__footer-pitch {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.landing__footer-title {
+  font-family: var(--font-ev);
+  font-weight: 100;
+  font-size: 36px;
+  letter-spacing: -0.04em;
+  margin: 0;
+  color: var(--deep);
+}
+
+.landing__footer-body {
+  font-family: var(--font-nh);
+  font-weight: 300;
+  font-size: 14px;
+  color: var(--ink);
+  opacity: 0.85;
+  margin: 0;
+}
+
+.landing__footer-meta {
+  font-family: var(--font-cond);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  opacity: 0.6;
+}
+
 /* ── Auth (login / signup) ── */
 
 .auth-shell {
@@ -1634,6 +2008,62 @@ textarea:focus {
  */
 
 @media (max-width: 700px) {
+  /* Landing collapses to single column; tagline + auth card stack. */
+  .landing {
+    padding: 20px 16px 60px;
+  }
+  .landing__topbar {
+    margin-bottom: 32px;
+  }
+  .landing__brand {
+    font-size: 26px;
+  }
+  .landing__logo {
+    width: 24px;
+    height: 24px;
+  }
+  .landing__brand-row {
+    gap: 10px;
+  }
+  .landing__hero {
+    grid-template-columns: 1fr;
+    gap: 32px;
+    margin-bottom: 48px;
+  }
+  .landing__tagline {
+    font-size: 44px;
+  }
+  .landing__hero-auth {
+    padding: 20px;
+  }
+  .landing__features {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    margin-bottom: 56px;
+  }
+  .landing__vision {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 28px 0 32px;
+    margin-bottom: 56px;
+  }
+  .landing__vision-title {
+    font-size: 30px;
+    grid-column: auto;
+  }
+  .landing__vision-body {
+    grid-column: auto;
+    grid-row: auto;
+    font-size: 14px;
+  }
+  .landing__footer-title {
+    font-size: 28px;
+  }
+  /* Auth inputs must be ≥16px on mobile or iOS Safari zooms on focus. */
+  .landing__auth-field input {
+    font-size: 16px;
+  }
+
   .app {
     padding: 20px 16px 60px;
   }

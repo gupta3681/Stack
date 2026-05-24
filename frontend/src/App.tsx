@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ApiError, api } from "./api/client";
 import { useAuth } from "./auth/AuthContext";
-import { LoginPage } from "./auth/LoginPage";
+import { LandingPage } from "./auth/LandingPage";
 import { ProfileModal } from "./auth/ProfileModal";
 import { StackHeader } from "./components/StackHeader";
 import { QuickCapture } from "./components/QuickCapture";
@@ -198,7 +198,7 @@ export default function App() {
     return <div className="boot-screen">—</div>;
   }
   if (status === "anonymous") {
-    return <LoginPage />;
+    return <LandingPage />;
   }
   return <AuthedApp />;
 }
