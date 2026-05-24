@@ -50,7 +50,6 @@ Stack's core moves:
 - ✅ Confirm-password field on signup
 - ✅ Task counts in topbar nav (`Today (3)`, `Tomorrow (5)`, `Stacks (4)`)
 - ✅ First-run onboarding tips card (no library tour — dismissable Mono card)
-- ✅ About page (vision, sharing roadmap, AI agent roadmap)
 - ✅ Shareable topic stacks via random slug, read-only public viewer at `/s/<slug>`
 - ✅ Dev: SQLite + native `./dev.sh`, OR Postgres + Docker compose
 - ✅ Prod overlay (`docker-compose.prod.yml`): nginx in front, backend/db isolated inside the network
@@ -217,7 +216,6 @@ Stack/
             ├── TaskEditModal.tsx   ← edit name/direct_link/desc (via frontmatter sync)/context_md/due/priority
             ├── OverdueSection.tsx
             ├── OnboardingTips.tsx  ← first-run dismissable tips card
-            ├── AboutPage.tsx       ← vision + sharing + AI roadmap
             ├── TopicStackList.tsx  ← "All Stacks" page + create modal
             └── TopicStackView.tsx  ← single topic stack detail
 ```

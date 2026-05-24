@@ -7,7 +7,6 @@ import { ProfileModal } from "./auth/ProfileModal";
 import { StackHeader } from "./components/StackHeader";
 import { QuickCapture } from "./components/QuickCapture";
 import { StackView } from "./components/StackView";
-import { AboutPage } from "./components/AboutPage";
 import { OverdueSection } from "./components/OverdueSection";
 import { OnboardingTips } from "./components/OnboardingTips";
 import { PublicStackView } from "./components/PublicStackView";
@@ -18,8 +17,7 @@ type View =
   | { kind: "today" }
   | { kind: "tomorrow" }
   | { kind: "stacks-list" }
-  | { kind: "stacks-detail"; stackId: number }
-  | { kind: "about" };
+  | { kind: "stacks-detail"; stackId: number };
 
 function todayISO(): string {
   const d = new Date();
@@ -52,7 +50,18 @@ function AuthedApp() {
   return (
     <div className="app">
       <div className="topbar">
-        <div className="topbar__brand">STACK</div>
+        <div className="topbar__brand">
+          <svg
+            className="topbar__logo"
+            viewBox="0 0 32 32"
+            aria-hidden="true"
+          >
+            <rect x="5" y="7" width="22" height="4" />
+            <rect x="5" y="14" width="22" height="4" opacity="0.6" />
+            <rect x="5" y="21" width="22" height="4" opacity="0.3" />
+          </svg>
+          <span>STACK</span>
+        </div>
         <nav className="topbar__nav">
           <button
             type="button"
@@ -75,13 +84,6 @@ function AuthedApp() {
           >
             Stacks{navCount(counts?.topic_stacks)}
           </button>
-          <button
-            type="button"
-            className={`nav-link${view.kind === "about" ? " nav-link--active" : ""}`}
-            onClick={() => setView({ kind: "about" })}
-          >
-            About
-          </button>
           <span className="topbar__sep" aria-hidden>
             ·
           </span>
@@ -101,7 +103,7 @@ function AuthedApp() {
 
       <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
 
-      {view.kind !== "about" && <OnboardingTips />}
+      <OnboardingTips />
 
       {view.kind === "today" || view.kind === "tomorrow" ? (
         <DailyStackPanel
@@ -114,14 +116,12 @@ function AuthedApp() {
         <TopicStackList
           onOpen={(stackId) => setView({ kind: "stacks-detail", stackId })}
         />
-      ) : view.kind === "stacks-detail" ? (
+      ) : (
         <TopicStackView
           stackId={view.stackId}
           todayDate={dates.today}
           onBack={() => setView({ kind: "stacks-list" })}
         />
-      ) : (
-        <AboutPage />
       )}
     </div>
   );
