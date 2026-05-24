@@ -21,8 +21,12 @@ export const TOPIC_KINDS: { value: Exclude<StackKind, "daily">; label: string }[
 export interface Task {
   id: number;
   stack_id: number | null;
-  title: string;
-  description: string | null;
+  name: string;
+  // Long-form markdown body (with optional YAML frontmatter — convention only,
+  // not parsed by the backend yet). Replaces the old `description` field.
+  context_md: string | null;
+  // Canonical URL for this task. Set → clicking the card opens it in a new tab.
+  direct_link: string | null;
   position: number;
   status: TaskStatus;
   priority_hint: PriorityHint | null;
@@ -49,11 +53,15 @@ export interface Stack {
   // re-share cycles (same URL each time).
   is_public: boolean;
   share_slug: string | null;
+  // When true, the public viewer renders each task's context_md body.
+  share_context_in_public: boolean;
 }
 
 export interface PublicTask {
-  title: string;
-  description: string | null;
+  name: string;
+  // Only populated when the owner opted in via share_context_in_public.
+  context_md: string | null;
+  direct_link: string | null;
   priority_hint: PriorityHint | null;
   due_at: string | null;
   position: number;
@@ -74,8 +82,9 @@ export interface CreateTopicStackInput {
 }
 
 export interface CreateTaskInput {
-  title: string;
-  description?: string | null;
+  name: string;
+  context_md?: string | null;
+  direct_link?: string | null;
   stack_date?: string | null;
   stack_id?: number | null;
   priority_hint?: PriorityHint | null;
@@ -83,8 +92,9 @@ export interface CreateTaskInput {
 }
 
 export interface UpdateTaskInput {
-  title?: string;
-  description?: string | null;
+  name?: string;
+  context_md?: string | null;
+  direct_link?: string | null;
   status?: TaskStatus;
   due_at?: string | null;
   priority_hint?: PriorityHint | null;

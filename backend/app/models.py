@@ -98,6 +98,12 @@ class Stack(Base):
     share_slug: Mapped[str | None] = mapped_column(
         String(20), unique=True, index=True, nullable=True
     )
+    # When true, the public viewer includes each task's context_md body
+    # (the long-form markdown). Default false so casual sharing doesn't
+    # accidentally publish private notes.
+    share_context_in_public: Mapped[bool] = mapped_column(
+        default=False, server_default=false(), nullable=False
+    )
 
     # No delete-orphan: setting task.stack_id=None (move to backlog) must NOT
     # delete the task. Stack deletion is handled by the FK's ondelete=SET NULL.
@@ -117,8 +123,20 @@ class Task(Base):
     stack_id: Mapped[int | None] = mapped_column(
         ForeignKey("stacks.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    title: Mapped[str] = mapped_column(String(500))
+    name: Mapped[str] = mapped_column(String(500))
+    # Deprecated: description is being replaced by context_md (rich markdown
+    # with optional frontmatter). Kept as a column in the DB for now since
+    # SQLite can't drop columns and we backfill its data into context_md;
+    # new code reads/writes context_md only.
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Rich long-form context — markdown with optional YAML frontmatter
+    # (name, description, direct_link). Backend doesn't parse the
+    # frontmatter today; that's user/agent convention.
+    context_md: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The canonical URL the task points to. Used as the primary click target
+    # on the task card. Separate column (not parsed from frontmatter) so the
+    # click path doesn't need to crack the markdown every render.
+    direct_link: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     position: Mapped[int] = mapped_column(Integer, default=0)
     status: Mapped[TaskStatus] = mapped_column(
         Enum(TaskStatus), default=TaskStatus.pending, nullable=False

@@ -1,14 +1,41 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .models import PriorityHint, StackKind, TaskStatus
 
 
+def _validate_url_scheme(value: str | None) -> str | None:
+    """Reject anything that isn't http(s)://. Treat blank as cleared.
+
+    Without this guard a malicious owner could store a `javascript:` URL
+    as their task's direct_link; the public viewer renders it as `<a href>`
+    and the owner card opens it via window.open — both paths execute the
+    script in the visitor's Stack origin with their session cookie.
+    """
+    if value is None:
+        return None
+    trimmed = value.strip()
+    if not trimmed:
+        return None
+    lowered = trimmed.lower()
+    if not (lowered.startswith("http://") or lowered.startswith("https://")):
+        raise ValueError("direct_link must be an http:// or https:// URL")
+    return trimmed
+
+
 class TaskBase(BaseModel):
-    title: str = Field(min_length=1, max_length=500)
-    description: str | None = None
+    name: str = Field(min_length=1, max_length=500)
+    # Long-form markdown with optional YAML frontmatter (name, description,
+    # direct_link). The backend doesn't parse it today — agents will later.
+    context_md: str | None = None
+    # The URL the task points to. Used as the primary click target on cards
+    # when set. Stored as a separate column for fast access. Restricted to
+    # http(s) at the schema layer — see _validate_url_scheme.
+    direct_link: str | None = Field(default=None, max_length=2048)
     due_at: datetime | None = None
+
+    _check_direct_link = field_validator("direct_link")(_validate_url_scheme)
 
 
 class TaskCreate(TaskBase):
@@ -22,11 +49,14 @@ class TaskCreate(TaskBase):
 
 
 class TaskUpdate(BaseModel):
-    title: str | None = Field(default=None, min_length=1, max_length=500)
-    description: str | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=500)
+    context_md: str | None = None
+    direct_link: str | None = Field(default=None, max_length=2048)
     status: TaskStatus | None = None
     due_at: datetime | None = None
     priority_hint: PriorityHint | None = None
+
+    _check_direct_link = field_validator("direct_link")(_validate_url_scheme)
 
 
 class TaskMove(BaseModel):
@@ -72,11 +102,13 @@ class StackOut(BaseModel):
     tasks: list[TaskOut]
     is_public: bool = False
     share_slug: str | None = None
+    share_context_in_public: bool = False
 
 
 class StackUpdate(BaseModel):
     intention: str | None = None
     name: str | None = None
+    share_context_in_public: bool | None = None
 
 
 class TopicStackCreate(BaseModel):
@@ -101,12 +133,16 @@ class PublicTaskOut(BaseModel):
       - stack_id, user_id, created_at, updated_at
     Anything that says "this is what the owner is actively doing right now"
     is omitted; visitors see what's queued, not the operational state.
+
+    `context_md` is only populated when the owner opts in via the
+    stack-level share_context_in_public flag — see public router.
     """
 
     model_config = ConfigDict(from_attributes=True)
 
-    title: str
-    description: str | None
+    name: str
+    context_md: str | None = None
+    direct_link: str | None = None
     priority_hint: PriorityHint | None
     due_at: datetime | None
     position: int

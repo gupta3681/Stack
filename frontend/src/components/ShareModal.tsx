@@ -54,6 +54,14 @@ export function ShareModal({ stack, open, onClose }: Props) {
     onSuccess,
   });
 
+  const toggleContext = useMutation({
+    mutationFn: (include: boolean) =>
+      stack.id !== null
+        ? api.updateTopicStack(stack.id, { share_context_in_public: include })
+        : Promise.reject(new Error("Unsaved stack")),
+    onSuccess,
+  });
+
   if (!open) return null;
 
   const publicUrl =
@@ -117,9 +125,23 @@ export function ShareModal({ stack, open, onClose }: Props) {
                   {copied ? "Copied" : "Copy"}
                 </button>
               </div>
+              <label className="share__toggle">
+                <input
+                  type="checkbox"
+                  checked={stack.share_context_in_public}
+                  disabled={toggleContext.isPending}
+                  onChange={(e) => toggleContext.mutate(e.target.checked)}
+                />
+                <span>
+                  Include rich context (markdown notes) for visitors
+                </span>
+              </label>
               <p className="share__hint">
                 Hidden from visitors: tasks marked done, your in-progress
                 timer, completion timestamps. Only the queued items show.
+                {!stack.share_context_in_public
+                  ? " Long-form notes stay private until you flip the switch above."
+                  : ""}
               </p>
               <div className="modal__actions">
                 <button

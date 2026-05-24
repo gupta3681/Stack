@@ -39,7 +39,7 @@ export function OverdueSection({ todayDate }: Props) {
       <ul className="tasks" style={{ borderTop: "none" }}>
         {tasks.map((t) => (
           <li key={t.id} className="overdue-task">
-            <p className="overdue-task__title">{t.title}</p>
+            <p className="overdue-task__title">{t.name}</p>
             <span className="overdue-task__date">
               from {formatShort(t.stack_id)}
             </span>
@@ -55,7 +55,7 @@ export function OverdueSection({ todayDate }: Props) {
                 type="button"
                 onClick={() => dismiss.mutate(t.id)}
                 disabled={dismiss.isPending}
-                aria-label={`Dismiss ${t.title}`}
+                aria-label={`Dismiss ${t.name}`}
               >
                 Dismiss
               </button>

@@ -42,10 +42,10 @@ Stack's core moves:
 - ✅ Multi-user with email+password auth, server-side sessions, HTTP-only cookies
 - ✅ Daily stacks (Today, Tomorrow) with drag-reorder, prominence scaling, intention line, overdue surfacing
 - ✅ Topic stacks (7 kinds: `daily`, `todo`, `reading`, `watching`, `listening`, `buy`, `ideas`)
-- ✅ Per-task: title, description, due date, priority hint, status (pending / in_progress / done / cancelled), live timer for in-progress
+- ✅ Per-task: name, **context_md (long-form markdown with optional YAML frontmatter; backend doesn't parse it yet)**, **direct_link (URL — primary click target on the card)**, due date, priority hint, status (pending / in_progress / done / cancelled), live timer for in-progress
 - ✅ Move tasks between stacks (e.g. pull from a topic stack into Today)
 - ✅ Quick-capture with priority hints
-- ✅ Edit modal (title, description, due date, priority hint)
+- ✅ Edit modal (name, direct_link, description, context_md markdown editor with bidirectional frontmatter sync + preview tab, due date, priority hint)
 - ✅ Profile modal (display name + change password with current-pw verification)
 - ✅ Confirm-password field on signup
 - ✅ Task counts in topbar nav (`Today (3)`, `Tomorrow (5)`, `Stacks (4)`)
@@ -117,7 +117,8 @@ We don't have a separate service layer or message bus. FastAPI routers call SQLA
        │                        intention NULL)
        │                       UNIQUE (user_id, stack_date)
        │
-       └──── N ────► tasks     (id, user_id, stack_id NULL, title, description,
+       └──── N ────► tasks     (id, user_id, stack_id NULL, name,
+                                context_md, direct_link, description [DEPRECATED],
                                 position, status, priority_hint, due_at,
                                 in_progress_started_at, accumulated_seconds,
                                 completed_at, created_at, updated_at)
@@ -213,7 +214,7 @@ Stack/
             ├── QuickCapture.tsx
             ├── StackView.tsx       ← drag-drop, optimistic state, polymorphic stackRef
             ├── TaskCard.tsx        ← prominence-scaled, timer, action buttons
-            ├── TaskEditModal.tsx   ← edit title/desc/due/priority
+            ├── TaskEditModal.tsx   ← edit name/direct_link/desc (via frontmatter sync)/context_md/due/priority
             ├── OverdueSection.tsx
             ├── OnboardingTips.tsx  ← first-run dismissable tips card
             ├── AboutPage.tsx       ← vision + sharing + AI roadmap
@@ -300,7 +301,17 @@ If you're tempted to add a color or rounded corner, stop. The whole product's vi
 
 ## Non-obvious conventions (gotchas to know)
 
-1. **PATCH null clears, omit preserves.** Backend uses `payload.model_dump(exclude_unset=True)` and checks `if "field" in fields`. Sending `{description: null}` clears the description; omitting `description` from the body leaves it alone. Don't revert to `is not None` checks — you'll break field clearing. ([tasks.py:148](backend/app/routers/tasks.py:148))
+1. **PATCH null clears, omit preserves.** Backend uses `payload.model_dump(exclude_unset=True)` and checks `if "field" in fields`. Sending `{context_md: null}` clears the field; omitting it from the body leaves it alone. Don't revert to `is not None` checks — you'll break field clearing. ([tasks.py:148](backend/app/routers/tasks.py:148))
+
+18. **`Task.description` is deprecated but still in the DB.** It was renamed to `context_md`. The migration backfills `context_md` from existing `description` rows once. New code reads/writes `context_md` only. The old column stays because SQLite can't cleanly DROP COLUMN; safe to ignore unless you need to manually back-fill from it.
+
+19. **`context_md` frontmatter is convention only, not parsed by the backend.** Users (and eventually agents) write YAML-style frontmatter (`name:`, `description:`, `direct_link:`) at the top of their markdown. The backend stores it verbatim. The `direct_link` URL the click handler opens lives in its own structured column — not parsed from frontmatter. That separation keeps the click path fast and avoids backend YAML parsing in v1.
+
+20. **Stack-level share gating for context.** `Stack.share_context_in_public` (default `false`) controls whether `PublicTaskOut.context_md` is populated. `direct_link` is always exposed when sharing — it's the click target visitors actually use.
+
+21. **`Task.title` was renamed to `Task.name`.** Both Postgres and SQLite (3.25+) support `ALTER TABLE … RENAME COLUMN`, so this was a real rename (not a deprecation). The migration in [main.py `_migrate_rename_task_title_to_name`](backend/app/main.py) runs **before** `Base.metadata.create_all` so existing DBs rename in place and fresh DBs get `name` directly. The API payload key, Pydantic field, frontend types, and the modal label all use `name` now — there is no `title` left anywhere. If you find one in a future PR, it's a bug.
+
+22. **Bidirectional frontmatter ↔ inputs in TaskEditModal.** The modal's Name/Direct link/Description inputs are derived views over `context_md`'s frontmatter — typing in an input rewrites the YAML block; editing the YAML updates the inputs. The shared parser/serializer lives in [`frontend/src/lib/markdown.ts`](frontend/src/lib/markdown.ts) and uses a leading-one-whitespace strip (not `.trim()`) so spaces typed inside input fields don't get eaten on round-trip. Unknown frontmatter keys (e.g. `tags:`) are preserved.
 
 2. **Cache clear on logout** ([AuthContext.tsx:64](frontend/src/auth/AuthContext.tsx:64)). React Query keys are not user-scoped, so we **must** call `qc.clear()` on logout to prevent the next user's data view from briefly showing the previous user's cached data. If you add new queries, this is the safety net.
 

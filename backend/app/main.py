@@ -115,6 +115,88 @@ def _migrate_add_stack_sharing_columns() -> None:
                 pass
 
 
+def _migrate_add_task_context_columns() -> None:
+    """Additive migration: tasks.context_md + tasks.direct_link.
+
+    Backfills context_md from any existing non-null description so the
+    rename doesn't lose data. Old description column stays in the DB
+    (SQLite can't DROP COLUMN cleanly) but new code never reads it.
+    """
+    inspector = inspect(engine)
+    if "tasks" not in inspector.get_table_names():
+        return
+    columns = {c["name"] for c in inspector.get_columns("tasks")}
+    statements: list[str] = []
+    if "context_md" not in columns:
+        statements.append("ALTER TABLE tasks ADD COLUMN context_md TEXT")
+        # Backfill: preserve any existing description text as the body of
+        # the new markdown field. Users can later add frontmatter on top.
+        statements.append(
+            "UPDATE tasks SET context_md = description "
+            "WHERE description IS NOT NULL AND context_md IS NULL"
+        )
+    if "direct_link" not in columns:
+        statements.append("ALTER TABLE tasks ADD COLUMN direct_link VARCHAR(2048)")
+    if not statements:
+        return
+    with engine.begin() as conn:
+        for sql in statements:
+            try:
+                conn.execute(text(sql))
+            except (OperationalError, ProgrammingError):
+                pass
+
+
+def _migrate_add_stack_share_context_column() -> None:
+    """Additive migration: stacks.share_context_in_public (default false)."""
+    inspector = inspect(engine)
+    if "stacks" not in inspector.get_table_names():
+        return
+    columns = {c["name"] for c in inspector.get_columns("stacks")}
+    if "share_context_in_public" in columns:
+        return
+    with engine.begin() as conn:
+        try:
+            conn.execute(
+                text(
+                    "ALTER TABLE stacks ADD COLUMN share_context_in_public "
+                    "BOOLEAN NOT NULL DEFAULT FALSE"
+                )
+            )
+        except (OperationalError, ProgrammingError):
+            pass
+
+
+def _migrate_rename_task_title_to_name() -> None:
+    """One-shot rename: tasks.title → tasks.name.
+
+    The frontmatter convention, modal label, and the public API now all use
+    `name`. The DB column was the last lingering `title`. Postgres and
+    SQLite (3.25+) both support ALTER TABLE ... RENAME COLUMN.
+
+    Idempotent: skips if the rename already happened (name exists) or if
+    we're on a brand-new DB (neither column exists yet — create_all will
+    make `name` directly).
+    """
+    inspector = inspect(engine)
+    if "tasks" not in inspector.get_table_names():
+        return
+    columns = {c["name"] for c in inspector.get_columns("tasks")}
+    if "name" in columns:
+        return
+    if "title" not in columns:
+        return
+    with engine.begin() as conn:
+        try:
+            conn.execute(text("ALTER TABLE tasks RENAME COLUMN title TO name"))
+        except (OperationalError, ProgrammingError):
+            # Loud-fail in logs but don't crash boot — the next request will
+            # 500 visibly if the rename truly failed.
+            import logging
+
+            logging.exception("Failed to rename tasks.title → tasks.name")
+
+
 def _migrate_add_user_onboarded_at() -> None:
     """Additive migration: users.onboarded_at — null on existing rows.
 
@@ -138,9 +220,16 @@ def _migrate_add_user_onboarded_at() -> None:
 
 
 _drop_pre_auth_tables_if_needed()
+# Rename has to run BEFORE create_all on existing DBs — otherwise create_all
+# is a no-op (table exists) and the column rename never happens. On fresh
+# DBs the rename is a no-op (tasks table doesn't exist yet) and create_all
+# makes the table with the new `name` column directly.
+_migrate_rename_task_title_to_name()
 Base.metadata.create_all(bind=engine)
 _migrate_add_stack_kind_columns()
 _migrate_add_stack_sharing_columns()
+_migrate_add_task_context_columns()
+_migrate_add_stack_share_context_column()
 _migrate_add_user_onboarded_at()
 
 

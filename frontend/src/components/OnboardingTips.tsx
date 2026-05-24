@@ -30,10 +30,10 @@ export function OnboardingTips() {
           </span>
         </li>
         <li>
-          <span className="onboarding__key">···</span>
+          <span className="onboarding__key">✎</span>
           <span>
-            Click <strong>···</strong> on any task to edit its title,
-            description, due date, or priority.
+            Click <strong>✎</strong> on any task to edit its title, direct
+            link, markdown notes, due date, or priority.
           </span>
         </li>
         <li>

@@ -40,7 +40,7 @@ def test_add_task_via_stack_id(auth_client: TestClient):
         "/stacks/topics", json={"kind": "reading", "name": "Sci-Fi"}
     ).json()["id"]
     r = auth_client.post(
-        "/tasks", json={"title": "Three Body Problem", "stack_id": sid}
+        "/tasks", json={"name": "Three Body Problem", "stack_id": sid}
     )
     assert r.status_code == 201
     assert r.json()["stack_id"] == sid
@@ -52,7 +52,7 @@ def test_create_rejects_both_stack_date_and_stack_id(auth_client: TestClient):
     ).json()["id"]
     r = auth_client.post(
         "/tasks",
-        json={"title": "x", "stack_date": "2026-06-01", "stack_id": sid},
+        json={"name": "x", "stack_date": "2026-06-01", "stack_id": sid},
     )
     assert r.status_code == 400
 
@@ -62,7 +62,7 @@ def test_delete_topic_stack_cascades_tasks(auth_client: TestClient):
         "/stacks/topics", json={"kind": "reading", "name": "Sci-Fi"}
     ).json()["id"]
     t = auth_client.post(
-        "/tasks", json={"title": "book", "stack_id": sid}
+        "/tasks", json={"name": "book", "stack_id": sid}
     ).json()
     r = auth_client.delete(f"/stacks/topics/{sid}")
     assert r.status_code == 204
@@ -82,7 +82,7 @@ def test_move_task_into_topic_stack(auth_client: TestClient):
         "/stacks/topics", json={"kind": "reading", "name": "Sci-Fi"}
     ).json()["id"]
     t = auth_client.post(
-        "/tasks", json={"title": "t", "stack_date": "2026-06-01"}
+        "/tasks", json={"name": "t", "stack_date": "2026-06-01"}
     ).json()
     r = auth_client.post(f"/tasks/{t['id']}/move", json={"stack_id": sid})
     assert r.status_code == 200

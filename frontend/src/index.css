@@ -887,6 +887,212 @@ textarea:focus {
   word-break: break-all;
 }
 
+.share__toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-nh);
+  font-size: 13px;
+  font-weight: 300;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.share__toggle input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--ink);
+}
+
+/* ── Wide modal + markdown editor (task context) ── */
+
+.modal--wide {
+  max-width: 720px;
+}
+
+.modal__context-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 6px;
+}
+
+.modal__tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.modal__tab {
+  font-family: var(--font-cond);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  background: transparent;
+  border: 1px solid var(--ink);
+  padding: 4px 10px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.modal__tab--active {
+  background: var(--ink);
+  color: var(--canvas);
+}
+
+.modal__md-textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace !important;
+  font-size: 13px !important;
+  line-height: 1.5;
+  min-height: 240px !important;
+}
+
+.modal__md-preview {
+  border: 1px solid var(--ink);
+  padding: 14px 16px;
+  min-height: 240px;
+  background: var(--canvas);
+  font-family: var(--font-nh);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--deep);
+  overflow-y: auto;
+  max-height: 360px;
+}
+
+.modal__md-preview h1,
+.modal__md-preview h2,
+.modal__md-preview h3 {
+  font-family: var(--font-nh);
+  letter-spacing: -0.02em;
+  margin: 12px 0 6px;
+}
+
+.modal__md-preview h1 { font-size: 22px; font-weight: 400; }
+.modal__md-preview h2 { font-size: 18px; font-weight: 400; }
+.modal__md-preview h3 { font-size: 15px; font-weight: 500; }
+
+.modal__md-preview p { margin: 8px 0; }
+.modal__md-preview ul,
+.modal__md-preview ol { margin: 8px 0; padding-left: 22px; }
+.modal__md-preview code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  border-bottom: 1px solid var(--ink);
+  padding: 0 2px;
+}
+.modal__md-preview pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  border: 1px solid var(--ink);
+  padding: 8px 10px;
+  overflow-x: auto;
+}
+.modal__md-preview pre code {
+  border: none;
+  padding: 0;
+}
+.modal__md-preview a {
+  color: var(--deep);
+  border-bottom: 1px solid var(--ink);
+}
+.modal__md-preview blockquote {
+  border-left: 2px solid var(--ink);
+  padding-left: 12px;
+  margin: 8px 0;
+  opacity: 0.8;
+}
+
+.modal__md-empty {
+  font-family: var(--font-cond);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  opacity: 0.5;
+}
+
+/* ── Task-card link affordances ── */
+
+.task__link-hint {
+  font-family: var(--font-nh);
+  font-weight: 300;
+  opacity: 0.6;
+  margin-left: 6px;
+  font-size: 0.7em;
+  vertical-align: super;
+}
+
+/* ── Public viewer: linked title + per-task context body ── */
+
+.task__title-link {
+  color: var(--deep);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.task__title-link:hover {
+  border-bottom-color: var(--ink);
+}
+
+.task__chip--toggle {
+  font-family: var(--font-cond);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid var(--ink);
+  padding: 2px 8px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.task__chip--toggle:hover {
+  background: var(--ink);
+  color: var(--canvas);
+}
+
+.task__chip--toggle-open {
+  background: var(--ink);
+  color: var(--canvas);
+}
+
+.task__public-context {
+  margin: 10px 0 4px;
+  padding: 10px 14px;
+  border-left: 2px solid var(--ink);
+  font-family: var(--font-nh);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--deep);
+  opacity: 0.92;
+}
+
+.task__public-context h1,
+.task__public-context h2,
+.task__public-context h3 {
+  font-family: var(--font-nh);
+  letter-spacing: -0.02em;
+  margin: 10px 0 4px;
+}
+.task__public-context h1 { font-size: 18px; font-weight: 400; }
+.task__public-context h2 { font-size: 16px; font-weight: 400; }
+.task__public-context h3 { font-size: 14px; font-weight: 500; }
+.task__public-context p { margin: 6px 0; }
+.task__public-context ul,
+.task__public-context ol { margin: 6px 0; padding-left: 20px; }
+.task__public-context code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  border-bottom: 1px solid var(--ink);
+  padding: 0 2px;
+}
+.task__public-context a {
+  color: var(--deep);
+  border-bottom: 1px solid var(--ink);
+}
+
 /* ── Public stack viewer ── */
 
 .public-empty {

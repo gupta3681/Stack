@@ -51,10 +51,21 @@ def get_public_stack(slug: str, request: Request, db: Session = Depends(get_db))
     ]
     visible_tasks.sort(key=lambda t: t.position)
 
+    # Owner controls whether the long-form context_md surfaces in the
+    # public viewer. direct_link is always shown — it's the click target
+    # and arguably is the point of sharing.
+    include_context = stack.share_context_in_public
+    public_tasks = []
+    for t in visible_tasks:
+        out = schemas.PublicTaskOut.model_validate(t)
+        if not include_context:
+            out.context_md = None
+        public_tasks.append(out)
+
     return schemas.PublicStackOut(
         kind=stack.kind,
         name=stack.name or "",
         intention=stack.intention,
         owner_display_name=(owner.display_name if owner else None),
-        tasks=[schemas.PublicTaskOut.model_validate(t) for t in visible_tasks],
+        tasks=public_tasks,
     )

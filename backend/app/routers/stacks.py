@@ -207,6 +207,8 @@ def update_topic_stack(
         stack.name = fields["name"].strip()
     if "intention" in fields:
         stack.intention = fields["intention"]
+    if "share_context_in_public" in fields and fields["share_context_in_public"] is not None:
+        stack.share_context_in_public = fields["share_context_in_public"]
     db.commit()
     db.refresh(stack)
     return stack

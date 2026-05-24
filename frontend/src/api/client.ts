@@ -68,10 +68,13 @@ export const api = {
       body: JSON.stringify(input),
     }),
 
-  updateTopicStack: (stackId: number, intention: string | null) =>
+  updateTopicStack: (
+    stackId: number,
+    fields: { intention?: string | null; share_context_in_public?: boolean }
+  ) =>
     request<Stack>(`/stacks/topics/${stackId}`, {
       method: "PATCH",
-      body: JSON.stringify({ intention }),
+      body: JSON.stringify(fields),
     }),
 
   deleteTopicStack: (stackId: number) =>

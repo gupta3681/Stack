@@ -55,9 +55,9 @@ def test_public_read_returns_shared_stack(client: TestClient, auth_client: TestC
     s = _create_topic_stack(auth_client, name="Sci-Fi")
     # Add a couple of tasks
     auth_client.post(
-        "/tasks", json={"title": "Three Body Problem", "stack_id": s["id"]}
+        "/tasks", json={"name": "Three Body Problem", "stack_id": s["id"]}
     )
-    auth_client.post("/tasks", json={"title": "Dune", "stack_id": s["id"]})
+    auth_client.post("/tasks", json={"name": "Dune", "stack_id": s["id"]})
     slug = auth_client.post(f"/stacks/topics/{s['id']}/share").json()[
         "share_slug"
     ]
@@ -70,7 +70,7 @@ def test_public_read_returns_shared_stack(client: TestClient, auth_client: TestC
     assert body["name"] == "Sci-Fi"
     assert body["kind"] == "reading"
     assert body["owner_display_name"] == "Aryan"
-    titles = [t["title"] for t in body["tasks"]]
+    titles = [t["name"] for t in body["tasks"]]
     assert "Three Body Problem" in titles and "Dune" in titles
 
 
@@ -79,10 +79,10 @@ def test_public_read_hides_done_and_cancelled_tasks(
 ):
     s = _create_topic_stack(auth_client, name="Reading")
     a = auth_client.post(
-        "/tasks", json={"title": "Active book", "stack_id": s["id"]}
+        "/tasks", json={"name": "Active book", "stack_id": s["id"]}
     ).json()
     d = auth_client.post(
-        "/tasks", json={"title": "Finished book", "stack_id": s["id"]}
+        "/tasks", json={"name": "Finished book", "stack_id": s["id"]}
     ).json()
     auth_client.patch(f"/tasks/{d['id']}", json={"status": "done"})
     slug = auth_client.post(f"/stacks/topics/{s['id']}/share").json()[
@@ -91,7 +91,7 @@ def test_public_read_hides_done_and_cancelled_tasks(
 
     client.cookies.clear()
     body = client.get(f"/public/stacks/{slug}").json()
-    titles = [t["title"] for t in body["tasks"]]
+    titles = [t["name"] for t in body["tasks"]]
     assert titles == ["Active book"]  # done excluded
     # Active task ID isn't even exposed
     assert "id" not in body["tasks"][0]
@@ -103,7 +103,7 @@ def test_public_read_excludes_operational_state(
     """The public view must NOT leak the owner's workflow internals."""
     s = _create_topic_stack(auth_client)
     t = auth_client.post(
-        "/tasks", json={"title": "Item", "stack_id": s["id"]}
+        "/tasks", json={"name": "Item", "stack_id": s["id"]}
     ).json()
     auth_client.post(f"/tasks/{t['id']}/start")
     slug = auth_client.post(f"/stacks/topics/{s['id']}/share").json()[
@@ -125,6 +125,56 @@ def test_public_read_excludes_operational_state(
         "accumulated_seconds",
     ):
         assert forbidden not in task, f"Public view leaks {forbidden}"
+
+
+def test_public_read_hides_context_md_by_default(
+    client: TestClient, auth_client: TestClient
+):
+    """Default: share_context_in_public=False, so context_md is None even
+    if the task has one."""
+    s = _create_topic_stack(auth_client)
+    auth_client.post(
+        "/tasks",
+        json={
+            "name": "Paper",
+            "stack_id": s["id"],
+            "context_md": "secret notes about this paper",
+            "direct_link": "https://arxiv.org/abs/1234",
+        },
+    )
+    slug = auth_client.post(f"/stacks/topics/{s['id']}/share").json()[
+        "share_slug"
+    ]
+
+    client.cookies.clear()
+    task = client.get(f"/public/stacks/{slug}").json()["tasks"][0]
+    assert task["context_md"] is None
+    # direct_link is the click target — always exposed.
+    assert task["direct_link"] == "https://arxiv.org/abs/1234"
+
+
+def test_public_read_includes_context_md_when_opted_in(
+    client: TestClient, auth_client: TestClient
+):
+    s = _create_topic_stack(auth_client)
+    auth_client.post(
+        "/tasks",
+        json={
+            "name": "Paper",
+            "stack_id": s["id"],
+            "context_md": "why I want to read this",
+        },
+    )
+    auth_client.patch(
+        f"/stacks/topics/{s['id']}", json={"share_context_in_public": True}
+    )
+    slug = auth_client.post(f"/stacks/topics/{s['id']}/share").json()[
+        "share_slug"
+    ]
+
+    client.cookies.clear()
+    task = client.get(f"/public/stacks/{slug}").json()["tasks"][0]
+    assert task["context_md"] == "why I want to read this"
 
 
 def test_unshared_slug_returns_404(client: TestClient, auth_client: TestClient):

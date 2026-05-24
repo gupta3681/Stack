@@ -140,8 +140,9 @@ def create_task(
     task = models.Task(
         user_id=current_user.id,
         stack_id=stack_id,
-        title=payload.title,
-        description=payload.description,
+        name=payload.name,
+        context_md=payload.context_md,
+        direct_link=payload.direct_link,
         due_at=payload.due_at,
         priority_hint=payload.priority_hint,
         position=position,
@@ -170,14 +171,16 @@ def update_task(
 ):
     task = _get_owned_task(db, task_id, current_user.id)
     # exclude_unset lets us distinguish "field omitted" (preserve) from
-    # "field=null" (clear). For non-nullable columns (title, status) we still
-    # ignore null; for nullable columns (description, due_at) we honor it.
+    # "field=null" (clear). For non-nullable columns (name, status) we still
+    # ignore null; for nullable columns (context_md, due_at) we honor it.
     fields = payload.model_dump(exclude_unset=True)
 
-    if "title" in fields and fields["title"] is not None:
-        task.title = fields["title"]
-    if "description" in fields:
-        task.description = fields["description"]
+    if "name" in fields and fields["name"] is not None:
+        task.name = fields["name"]
+    if "context_md" in fields:
+        task.context_md = fields["context_md"]
+    if "direct_link" in fields:
+        task.direct_link = fields["direct_link"]
     if "due_at" in fields:
         task.due_at = fields["due_at"]
     if "priority_hint" in fields:

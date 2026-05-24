@@ -30,19 +30,19 @@ export function TopicStackView({ stackId, todayDate, onBack }: Props) {
     queryKey: ["topic-stack", stackId],
     queryFn: () => api.getTopicStack(stackId),
   });
-  const [title, setTitle] = useState("");
+  const [name, setName] = useState("");
   const [hint, setHint] = useState<PriorityHint>("normal");
   const [shareOpen, setShareOpen] = useState(false);
 
   const create = useMutation({
     mutationFn: () =>
       api.createTask({
-        title: title.trim(),
+        name: name.trim(),
         stack_id: stackId,
         priority_hint: hint,
       }),
     onSuccess: () => {
-      setTitle("");
+      setName("");
       setHint("normal");
       invalidateStacks();
     },
@@ -108,7 +108,7 @@ export function TopicStackView({ stackId, todayDate, onBack }: Props) {
         className="qc"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!title.trim() || create.isPending) return;
+          if (!name.trim() || create.isPending) return;
           create.mutate();
         }}
       >
@@ -116,15 +116,15 @@ export function TopicStackView({ stackId, todayDate, onBack }: Props) {
           <button
             type="submit"
             className="qc__plus"
-            disabled={!title.trim() || create.isPending}
+            disabled={!name.trim() || create.isPending}
             aria-label="Add item"
           >
             + Add
           </button>
           <input
             className="qc__input"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             placeholder={`add to ${stack.name}…`}
             autoFocus
           />

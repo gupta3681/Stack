@@ -4,6 +4,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { useInvalidateStacks } from "../hooks/useInvalidateStacks";
+import { safeHref } from "../lib/url";
 import type { Task } from "../types";
 import { TaskEditModal } from "./TaskEditModal";
 
@@ -150,10 +151,31 @@ export function TaskCard({ task, positionIndex, moveTarget }: Props) {
         <div
           className="task__body"
           {...listeners}
-          style={{ cursor: "grab", touchAction: "none" }}
+          style={{
+            cursor: safeHref(task.direct_link) ? "pointer" : "grab",
+            touchAction: "none",
+          }}
+          onClick={() => {
+            // dnd-kit suppresses click when a real drag happens (past the
+            // activation distance), so we only land here on a real click.
+            // safeHref drops anything that isn't http(s) — defense in depth
+            // even though the backend validator should already reject it.
+            const link = safeHref(task.direct_link);
+            if (link) {
+              window.open(link, "_blank", "noopener,noreferrer");
+            } else {
+              setEditing(true);
+            }
+          }}
         >
-          <p className="task__title">{task.title}</p>
-          {task.description && <p className="task__desc">{task.description}</p>}
+          <p className="task__title">
+            {task.name}
+            {safeHref(task.direct_link) && (
+              <span className="task__link-hint" aria-hidden>
+                {" ↗"}
+              </span>
+            )}
+          </p>
           {(task.priority_hint && task.priority_hint !== "normal") ||
           dueChip ||
           showTimer ? (
@@ -205,10 +227,11 @@ export function TaskCard({ task, positionIndex, moveTarget }: Props) {
           <button
             type="button"
             className="task__icon task__icon--more"
-            aria-label="Edit"
+            aria-label="Edit task"
+            title="Edit"
             onClick={() => setEditing(true)}
           >
-            ···
+            ✎
           </button>
           <button
             type="button"
