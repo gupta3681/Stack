@@ -79,21 +79,24 @@ export function LandingPage() {
         <div className="landing__hero-copy">
           <div className="landing__eyebrow">A productivity experiment</div>
           <h1 className="landing__tagline">
-            Priority is a queue,
+            Your priorities,
             <br />
-            not a list.
+            rendered at the size
+            <br />
+            they deserve.
           </h1>
           <p className="landing__lede">
-            Most to-do apps treat your work as a flat list of equal items.
-            They ignore the truth — there's <em>one</em> thing on top, the
-            rest are queued, and the order changes every time something new
-            lands. Stack is built around that truth.
+            Stack is a to-do app with an opinion. The top of every stack is{" "}
+            <em>physically larger</em> than the rest — you should feel the
+            weight of the one thing that's next, not scan a flat list to
+            find it.
           </p>
           <p className="landing__lede">
-            Capture fast, reorder fast, see the top clearly, ignore the
-            rest until the top is done. Every task carries enough
-            structured context that the AI agent coming next can read
-            across all your stacks and propose what should bump up.
+            The deeper bet is on what comes next: an AI agent that reads
+            across all your stacks (Today, Reading, Watching, Buy, Ideas)
+            and proposes what should move where, based on what you're
+            focused on right now. Priority as a function of context, not a
+            static label.
           </p>
         </div>
 
