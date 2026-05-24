@@ -848,6 +848,14 @@ textarea:focus {
   color: var(--ink);
 }
 
+.stack-head__total {
+  font-family: var(--font-cond);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  opacity: 0.7;
+}
+
 .share__status {
   font-family: var(--font-nh);
   font-size: 16px;

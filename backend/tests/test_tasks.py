@@ -94,6 +94,29 @@ def test_direct_link_blank_becomes_null(auth_client: TestClient):
     assert t["direct_link"] is None
 
 
+def test_estimate_minutes_round_trips(auth_client: TestClient):
+    t = _create(auth_client, name="work", estimate_minutes=90)
+    assert t["estimate_minutes"] == 90
+    r = auth_client.patch(f"/tasks/{t['id']}", json={"estimate_minutes": 30})
+    assert r.json()["estimate_minutes"] == 30
+    r = auth_client.patch(f"/tasks/{t['id']}", json={"estimate_minutes": None})
+    assert r.json()["estimate_minutes"] is None
+
+
+def test_estimate_minutes_rejects_out_of_range(auth_client: TestClient):
+    """Allowed range is 0–1440 (= one day) to catch obvious mistakes."""
+    r = auth_client.post(
+        "/tasks",
+        json={"name": "x", "stack_date": "2026-06-01", "estimate_minutes": -1},
+    )
+    assert r.status_code == 422
+    r = auth_client.post(
+        "/tasks",
+        json={"name": "x", "stack_date": "2026-06-01", "estimate_minutes": 2000},
+    )
+    assert r.status_code == 422
+
+
 def test_patch_due_at_null_clears(auth_client: TestClient):
     t = _create(auth_client, name="t", due_at="2026-12-31T23:59:00")
     r = auth_client.patch(f"/tasks/{t['id']}", json={"due_at": None})

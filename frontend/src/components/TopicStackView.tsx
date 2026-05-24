@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { useInvalidateStacks } from "../hooks/useInvalidateStacks";
+import { formatMinutes } from "../lib/format";
 import { TOPIC_KINDS, type PriorityHint } from "../types";
 import { ShareModal } from "./ShareModal";
 import { StackView } from "./StackView";
@@ -69,6 +70,18 @@ export function TopicStackView({ stackId, todayDate, onBack }: Props) {
           {stack.is_public && (
             <span className="stack-head__badge"> · Public</span>
           )}
+          {(() => {
+            const total = stack.tasks.reduce((sum, t) => {
+              if (t.status === "done" || t.status === "cancelled") return sum;
+              return sum + (t.estimate_minutes ?? 0);
+            }, 0);
+            return total > 0 ? (
+              <span className="stack-head__total">
+                {" · "}
+                {formatMinutes(total)} planned
+              </span>
+            ) : null;
+          })()}
         </div>
         <div className="topics__head">
           <h1 className="stack-head__title">{stack.name}</h1>

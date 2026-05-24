@@ -4,6 +4,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { useInvalidateStacks } from "../hooks/useInvalidateStacks";
+import { formatMinutes } from "../lib/format";
 import { safeHref } from "../lib/url";
 import type { Task } from "../types";
 import { TaskEditModal } from "./TaskEditModal";
@@ -178,12 +179,18 @@ export function TaskCard({ task, positionIndex, moveTarget }: Props) {
           </p>
           {(task.priority_hint && task.priority_hint !== "normal") ||
           dueChip ||
-          showTimer ? (
+          showTimer ||
+          task.estimate_minutes ? (
             <div className="task__meta">
               {task.priority_hint && task.priority_hint !== "normal" && (
                 <span className="task__chip">{task.priority_hint}</span>
               )}
               {dueChip && <span className="task__chip">{dueChip}</span>}
+              {task.estimate_minutes ? (
+                <span className="task__chip" title="Estimated time">
+                  ~{formatMinutes(task.estimate_minutes)}
+                </span>
+              ) : null}
               {showTimer && (
                 <span
                   className={`task__chip${isActive ? " task__chip--live" : ""}`}

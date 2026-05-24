@@ -2,11 +2,14 @@ import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { useInvalidateStacks } from "../hooks/useInvalidateStacks";
+import { formatMinutes } from "../lib/format";
 
 interface Props {
   stackDate: string;
   intention: string | null;
   label: string;
+  /** Sum of estimate_minutes across active (non-done/cancelled) tasks. */
+  totalEstimateMinutes?: number | null;
 }
 
 function formatDate(iso: string): string {
@@ -14,7 +17,12 @@ function formatDate(iso: string): string {
   return `${y} / ${m} / ${d}`;
 }
 
-export function StackHeader({ stackDate, intention, label }: Props) {
+export function StackHeader({
+  stackDate,
+  intention,
+  label,
+  totalEstimateMinutes,
+}: Props) {
   const invalidateStacks = useInvalidateStacks();
   const [draft, setDraft] = useState(intention ?? "");
 
@@ -30,7 +38,15 @@ export function StackHeader({ stackDate, intention, label }: Props) {
 
   return (
     <header className="stack-head">
-      <div className="stack-head__date">{formatDate(stackDate)}</div>
+      <div className="stack-head__date">
+        {formatDate(stackDate)}
+        {totalEstimateMinutes && totalEstimateMinutes > 0 ? (
+          <span className="stack-head__total">
+            {" · "}
+            {formatMinutes(totalEstimateMinutes)} planned
+          </span>
+        ) : null}
+      </div>
       <h1 className="stack-head__title">{label}</h1>
       <div className="stack-head__intention">
         <input

@@ -34,6 +34,9 @@ class TaskBase(BaseModel):
     # http(s) at the schema layer — see _validate_url_scheme.
     direct_link: str | None = Field(default=None, max_length=2048)
     due_at: datetime | None = None
+    # Optional time budget in minutes. Summed at the stack level for the
+    # "planned time" total in the header.
+    estimate_minutes: int | None = Field(default=None, ge=0, le=24 * 60)
 
     _check_direct_link = field_validator("direct_link")(_validate_url_scheme)
 
@@ -55,6 +58,7 @@ class TaskUpdate(BaseModel):
     status: TaskStatus | None = None
     due_at: datetime | None = None
     priority_hint: PriorityHint | None = None
+    estimate_minutes: int | None = Field(default=None, ge=0, le=24 * 60)
 
     _check_direct_link = field_validator("direct_link")(_validate_url_scheme)
 
@@ -145,6 +149,7 @@ class PublicTaskOut(BaseModel):
     direct_link: str | None = None
     priority_hint: PriorityHint | None
     due_at: datetime | None
+    estimate_minutes: int | None = None
     position: int
 
 

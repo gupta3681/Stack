@@ -144,6 +144,7 @@ def create_task(
         context_md=payload.context_md,
         direct_link=payload.direct_link,
         due_at=payload.due_at,
+        estimate_minutes=payload.estimate_minutes,
         priority_hint=payload.priority_hint,
         position=position,
     )
@@ -183,6 +184,8 @@ def update_task(
         task.direct_link = fields["direct_link"]
     if "due_at" in fields:
         task.due_at = fields["due_at"]
+    if "estimate_minutes" in fields:
+        task.estimate_minutes = fields["estimate_minutes"]
     if "priority_hint" in fields:
         # Hint is purely informational once the task exists; position is set at
         # creation time and changed via drag/reorder, not via PATCH.

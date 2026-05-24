@@ -24,6 +24,17 @@ const HINTS: { value: PriorityHint; label: string }[] = [
   { value: "low", label: "Low" },
 ];
 
+// Estimate presets, in minutes. Keep the list tight — power users who need
+// 47 minutes of granularity probably don't need an estimate column at all.
+const ESTIMATE_PRESETS: { value: number; label: string }[] = [
+  { value: 15, label: "15m" },
+  { value: 30, label: "30m" },
+  { value: 60, label: "1h" },
+  { value: 120, label: "2h" },
+  { value: 240, label: "4h" },
+  { value: 480, label: "8h" },
+];
+
 /**
  * Build the starting markdown for the modal. If the task already has
  * context_md, sync any missing frontmatter from the structured columns
@@ -59,6 +70,9 @@ export function TaskEditModal({ task, open, onClose }: Props) {
   const [priority, setPriority] = useState<PriorityHint>(
     task.priority_hint ?? "normal"
   );
+  const [estimate, setEstimate] = useState<number | null>(
+    task.estimate_minutes ?? null
+  );
 
   // The markdown is the source of truth. The three input fields are
   // derived from the parsed frontmatter; editing them rewrites the
@@ -78,6 +92,7 @@ export function TaskEditModal({ task, open, onClose }: Props) {
     setContextMode("write");
     setDue(dueInputValue(task.due_at));
     setPriority(task.priority_hint ?? "normal");
+    setEstimate(task.estimate_minutes ?? null);
   }, [
     open,
     task.id,
@@ -86,6 +101,7 @@ export function TaskEditModal({ task, open, onClose }: Props) {
     task.context_md,
     task.due_at,
     task.priority_hint,
+    task.estimate_minutes,
   ]);
 
   useEffect(() => {
@@ -119,6 +135,7 @@ export function TaskEditModal({ task, open, onClose }: Props) {
         context_md: contextMd.trim() ? contextMd : null,
         due_at: due ? `${due}T23:59:00` : null,
         priority_hint: priority,
+        estimate_minutes: estimate,
       });
     },
     onSuccess: () => {
@@ -289,6 +306,35 @@ export function TaskEditModal({ task, open, onClose }: Props) {
                   {h.label}
                 </button>
               ))}
+            </div>
+          </fieldset>
+
+          <fieldset className="modal__field">
+            <span className="modal__label">Estimate</span>
+            <div className="modal__hints">
+              {ESTIMATE_PRESETS.map((p) => (
+                <button
+                  key={p.value}
+                  type="button"
+                  className={`qc__hint${estimate === p.value ? " qc__hint--active" : ""}`}
+                  onClick={() =>
+                    setEstimate(estimate === p.value ? null : p.value)
+                  }
+                  aria-pressed={estimate === p.value}
+                >
+                  {p.label}
+                </button>
+              ))}
+              {estimate !== null && (
+                <button
+                  type="button"
+                  className="modal__inline-clear"
+                  onClick={() => setEstimate(null)}
+                  aria-label="Clear estimate"
+                >
+                  clear
+                </button>
+              )}
             </div>
           </fieldset>
 

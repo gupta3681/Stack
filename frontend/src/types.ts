@@ -31,6 +31,8 @@ export interface Task {
   status: TaskStatus;
   priority_hint: PriorityHint | null;
   due_at: string | null;
+  // Optional time budget in minutes. Null = no estimate set.
+  estimate_minutes: number | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -64,6 +66,7 @@ export interface PublicTask {
   direct_link: string | null;
   priority_hint: PriorityHint | null;
   due_at: string | null;
+  estimate_minutes: number | null;
   position: number;
 }
 
@@ -89,6 +92,7 @@ export interface CreateTaskInput {
   stack_id?: number | null;
   priority_hint?: PriorityHint | null;
   due_at?: string | null;
+  estimate_minutes?: number | null;
 }
 
 export interface UpdateTaskInput {
@@ -98,6 +102,7 @@ export interface UpdateTaskInput {
   status?: TaskStatus;
   due_at?: string | null;
   priority_hint?: PriorityHint | null;
+  estimate_minutes?: number | null;
 }
 
 export interface AuthUser {

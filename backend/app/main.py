@@ -167,6 +167,21 @@ def _migrate_add_stack_share_context_column() -> None:
             pass
 
 
+def _migrate_add_task_estimate_column() -> None:
+    """Additive migration: tasks.estimate_minutes (nullable INT)."""
+    inspector = inspect(engine)
+    if "tasks" not in inspector.get_table_names():
+        return
+    columns = {c["name"] for c in inspector.get_columns("tasks")}
+    if "estimate_minutes" in columns:
+        return
+    with engine.begin() as conn:
+        try:
+            conn.execute(text("ALTER TABLE tasks ADD COLUMN estimate_minutes INTEGER"))
+        except (OperationalError, ProgrammingError):
+            pass
+
+
 def _migrate_rename_task_title_to_name() -> None:
     """One-shot rename: tasks.title → tasks.name.
 
@@ -230,6 +245,7 @@ _migrate_add_stack_kind_columns()
 _migrate_add_stack_sharing_columns()
 _migrate_add_task_context_columns()
 _migrate_add_stack_share_context_column()
+_migrate_add_task_estimate_column()
 _migrate_add_user_onboarded_at()
 
 

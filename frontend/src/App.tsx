@@ -155,12 +155,20 @@ function DailyStackPanel({ view, today, tomorrow, logout }: DailyPanelProps) {
     return <div className="empty">{stackQuery.isLoading ? "Loading…" : "—"}</div>;
   }
 
+  // Sum estimates from tasks that are still on the plate. Done and
+  // cancelled don't count toward "time still to spend today".
+  const totalEstimateMinutes = stack.tasks.reduce((sum, t) => {
+    if (t.status === "done" || t.status === "cancelled") return sum;
+    return sum + (t.estimate_minutes ?? 0);
+  }, 0);
+
   return (
     <>
       <StackHeader
         stackDate={stack.stack_date!}
         intention={stack.intention}
         label={view === "today" ? "TODAY'S STACK" : "TOMORROW'S STACK"}
+        totalEstimateMinutes={totalEstimateMinutes}
       />
       <QuickCapture stackDate={stack.stack_date!} />
       <StackView

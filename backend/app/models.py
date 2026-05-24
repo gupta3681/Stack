@@ -145,6 +145,10 @@ class Task(Base):
         Enum(PriorityHint), nullable=True
     )
     due_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # User-set time budget for the task, in minutes. Null = no estimate.
+    # Used to sum a "planned time" total per stack so visitors can see
+    # if a day fits the hours available.
+    estimate_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
