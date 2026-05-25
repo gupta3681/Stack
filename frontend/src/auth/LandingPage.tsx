@@ -3,13 +3,17 @@ import { useAuth } from "./AuthContext";
 import { ApiError } from "../api/client";
 
 /**
- * Sample one-liner copied by the "Copy starter curl" button under the
- * hero lede. Picks the simplest meaningful call ("show me today's stack")
- * so even a visitor who's never used the API can paste it into a terminal,
- * swap YOUR_TOKEN, and see their own data come back.
+ * One-liner copied by the "Copy starter command" button under the hero
+ * lede. Installs the Stack skill into the user's Claude Code skills
+ * directory — paste it in a terminal and Claude Code immediately knows
+ * how to drive Stack (add tasks, pull from topic stacks, mark done,
+ * share, etc.) using their personal API token. Self-contained: makes
+ * the directory if missing, then downloads the canonical SKILL.md from
+ * the repo's main branch.
  */
-const STARTER_CURL = `curl https://stack-production-138b.up.railway.app/api/stacks/today \\
-  -H "Authorization: Bearer YOUR_TOKEN"`;
+const STARTER_CURL = `mkdir -p ~/.claude/skills/stack && curl -fsSL \\
+  https://raw.githubusercontent.com/gupta3681/Stack/main/.claude/skills/stack/SKILL.md \\
+  -o ~/.claude/skills/stack/SKILL.md`;
 
 type Mode = "signup" | "login";
 
