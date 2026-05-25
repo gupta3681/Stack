@@ -173,6 +173,11 @@ textarea:focus {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  /* Guaranteed minimum breathing room between brand and nav. Without this
+   * the nav (which grows when role-gated items like Admin appear) can
+   * shove right up against the wordmark via space-between collapsing to
+   * zero. */
+  gap: 32px;
   border-bottom: 1px solid var(--ink);
   padding-bottom: 12px;
   margin-bottom: 40px;
@@ -187,6 +192,9 @@ textarea:focus {
   letter-spacing: 0.05em;
   color: var(--ink);
   line-height: 1;
+  /* Brand wordmark stays intact even when the nav row is wide; the nav
+   * is the one that should shrink/wrap, not the brand. */
+  flex-shrink: 0;
 }
 
 .topbar__logo {
