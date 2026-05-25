@@ -10,6 +10,7 @@ import {
   type KnownFrontmatterKey,
 } from "../lib/markdown";
 import type { PriorityHint, Task } from "../types";
+import { ConfirmModal } from "./ConfirmModal";
 
 interface Props {
   task: Task;
@@ -73,6 +74,7 @@ export function TaskEditModal({ task, open, onClose }: Props) {
   const [estimate, setEstimate] = useState<number | null>(
     task.estimate_minutes ?? null
   );
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   // The markdown is the source of truth. The three input fields are
   // derived from the parsed frontmatter; editing them rewrites the
@@ -342,9 +344,7 @@ export function TaskEditModal({ task, open, onClose }: Props) {
             <button
               type="button"
               className="modal__danger"
-              onClick={() => {
-                if (window.confirm("Delete this task?")) remove.mutate();
-              }}
+              onClick={() => setConfirmingDelete(true)}
               disabled={remove.isPending}
             >
               Delete
@@ -359,6 +359,26 @@ export function TaskEditModal({ task, open, onClose }: Props) {
             </div>
           </div>
         </form>
+
+        <ConfirmModal
+          open={confirmingDelete}
+          title="Delete task"
+          message={
+            <>
+              Delete <strong>"{task.name}"</strong>? This permanently
+              removes it — can't be undone.
+            </>
+          }
+          confirmLabel="Delete"
+          destructive
+          pending={remove.isPending}
+          onCancel={() => setConfirmingDelete(false)}
+          onConfirm={() =>
+            remove.mutate(undefined, {
+              onSuccess: () => setConfirmingDelete(false),
+            })
+          }
+        />
       </div>
     </div>
   );

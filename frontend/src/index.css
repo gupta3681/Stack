@@ -2314,20 +2314,29 @@ textarea:focus {
     padding: 10px 0;
   }
   .qc__input-wrap {
-    gap: 8px;
+    gap: 10px;
     flex-wrap: wrap;
-  }
-  .qc__input {
-    font-size: 16px; /* 16px+ keeps iOS Safari from zooming on focus */
-    flex-basis: 100%;
-    order: 0;
-  }
-  /* Push Pull button below the input on mobile so the input gets full width. */
-  .qc__pull {
-    order: 2;
+    align-items: center;
   }
   .qc__plus {
     order: -1;
+    /* Tappable target, anchors the row left. */
+    padding: 6px 0;
+  }
+  .qc__input {
+    font-size: 16px; /* 16px+ keeps iOS Safari from zooming on focus */
+    /* No flex-basis — let the input share the top row with + Add so the two
+     * capture intents (typing a new task / hitting Add) read as one action. */
+    order: 0;
+    flex: 1;
+    min-width: 0; /* allow shrink so + Add stays beside */
+  }
+  /* Pull button goes on its own row beneath. */
+  .qc__pull {
+    order: 2;
+    flex-basis: 100%;
+    padding: 8px 0;
+    text-align: left;
   }
   .qc__hints {
     /* full-width grid of 4 equal chips */
@@ -2354,24 +2363,29 @@ textarea:focus {
   }
   .task__actions {
     grid-column: 1 / -1;
-    justify-content: flex-end;
+    justify-content: flex-start;
     flex-wrap: wrap;
-    gap: 6px;
-    padding-top: 4px;
+    gap: 8px;
+    padding-top: 8px;
   }
   .task__icon,
   .task__icon--text {
-    padding: 6px 8px;
+    padding: 9px 12px;
     font-size: 11px;
     letter-spacing: 0.1em;
+    /* iOS HIG: ~44pt min touch target. 11px font + 9px padding ≈ 36px tall,
+     * close enough that fingers stop missing. */
+    min-height: 36px;
+    line-height: 1;
   }
   .task__check {
-    width: 28px;
-    height: 28px;
+    width: 36px;
+    height: 36px;
   }
   .task__x {
-    padding: 4px 10px;
-    font-size: 20px;
+    padding: 4px 12px;
+    font-size: 22px;
+    min-height: 36px;
   }
   /* Prominence scaling smaller on phone */
   .task--p0 .task__title {
@@ -2416,6 +2430,15 @@ textarea:focus {
   .modal__hints {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
+    /* More vertical space between rows when the chips wrap (estimate row
+     * goes 4 + 3 = two rows). */
+    row-gap: 8px;
+  }
+  /* Bigger touch targets for priority + estimate chips in the edit modal,
+   * matching the increased TaskCard button heights. */
+  .modal__hints .qc__hint {
+    padding: 12px 4px;
+    min-height: 40px;
   }
   .modal__actions {
     flex-direction: column-reverse;
