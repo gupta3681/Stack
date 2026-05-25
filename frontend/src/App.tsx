@@ -8,6 +8,7 @@ import { StackHeader } from "./components/StackHeader";
 import { QuickCapture } from "./components/QuickCapture";
 import { StackView } from "./components/StackView";
 import { AdminPanel } from "./components/AdminPanel";
+import { FeedbackModal } from "./components/FeedbackModal";
 import { OverdueSection } from "./components/OverdueSection";
 import { OnboardingTips } from "./components/OnboardingTips";
 import { PublicStackView } from "./components/PublicStackView";
@@ -37,6 +38,7 @@ function AuthedApp() {
   const { user, logout } = useAuth();
   const [view, setView] = useState<View>({ kind: "today" });
   const [profileOpen, setProfileOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   // Recompute on every render — no useMemo freeze. Crossing midnight (or any
   // re-render after the wall clock advances) picks up the new date naturally.
@@ -96,6 +98,13 @@ function AuthedApp() {
               Admin
             </button>
           )}
+          <button
+            type="button"
+            className="nav-link"
+            onClick={() => setFeedbackOpen(true)}
+          >
+            Feedback
+          </button>
           <span className="topbar__sep" aria-hidden>
             ·
           </span>
@@ -114,6 +123,7 @@ function AuthedApp() {
       </div>
 
       <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
+      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
 
       <OnboardingTips />
 

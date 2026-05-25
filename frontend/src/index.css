@@ -648,6 +648,53 @@ textarea:focus {
   max-width: 640px;
 }
 
+/* Feedback modal — same width as the edit modal, just needs the rating row
+ * + two short textareas. */
+.modal--feedback {
+  max-width: 520px;
+}
+
+.feedback__rating {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.feedback__rating-btn {
+  font-family: var(--font-nh);
+  font-weight: 300;
+  font-size: 22px;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--ink);
+  padding: 12px 0;
+  cursor: pointer;
+  letter-spacing: -0.02em;
+  transition: background 0.06s ease-out, color 0.06s ease-out;
+}
+.feedback__rating-btn:hover:not(.feedback__rating-btn--active) {
+  background: var(--canvas);
+  color: var(--deep);
+}
+.feedback__rating-btn--active {
+  background: var(--ink);
+  color: var(--canvas);
+}
+.feedback__rating-legend {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-cond);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  opacity: 0.5;
+  margin-top: 4px;
+}
+.feedback__req {
+  opacity: 0.5;
+  margin-left: 4px;
+}
+
 /* Pull modal contents */
 .modal__form.pull {
   gap: 18px;
@@ -1638,28 +1685,6 @@ textarea:focus {
   font-style: italic;
 }
 
-/* Inline CTA under the agent lede — gives the developer-y visitor a
- * one-click way to grab a working curl example without making the prose
- * itself techy. Restrained styling so it doesn't compete with the auth
- * card on the right. */
-.landing__copy-curl {
-  align-self: flex-start;
-  font-family: var(--font-cond);
-  font-size: 11px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--ink);
-  background: transparent;
-  border: 1px solid var(--ink);
-  padding: 8px 14px;
-  cursor: pointer;
-  margin-top: -4px; /* tighten gap to the lede above */
-  transition: background 0.08s ease-out, color 0.08s ease-out;
-}
-.landing__copy-curl:hover {
-  background: var(--ink);
-  color: var(--canvas);
-}
 
 .landing__hero-auth {
   border: 1px solid var(--ink);
@@ -2480,6 +2505,102 @@ textarea:focus {
   height: 60px;
   border: 1px solid var(--ink);
   background: var(--canvas);
+}
+
+/* ── Admin: section title meta ── */
+.admin__section-meta {
+  font-family: var(--font-cond);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink);
+  opacity: 0.55;
+}
+
+/* ── Admin: feedback list ── */
+
+.admin__feedback {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.admin__feedback-card {
+  border: 1px solid var(--ink);
+  background: var(--canvas);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.admin__feedback-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.admin__feedback-rating {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-nh);
+  font-size: 18px;
+  font-weight: 300;
+  color: var(--canvas);
+  background: var(--ink);
+  letter-spacing: -0.02em;
+}
+/* Subtle opacity tiering so 1s read as "rough" and 5s as "great" without
+ * adding any color. */
+.admin__feedback-rating--r1 { opacity: 0.4; }
+.admin__feedback-rating--r2 { opacity: 0.55; }
+.admin__feedback-rating--r3 { opacity: 0.7; }
+.admin__feedback-rating--r4 { opacity: 0.85; }
+.admin__feedback-rating--r5 { opacity: 1; }
+
+.admin__feedback-author {
+  font-family: var(--font-nh);
+  font-size: 14px;
+  color: var(--ink);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.admin__feedback-when {
+  font-family: var(--font-cond);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink);
+  opacity: 0.55;
+}
+.admin__feedback-body {
+  font-family: var(--font-nh);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  margin: 0;
+  white-space: pre-wrap;
+}
+.admin__feedback-bugs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 12px;
+  border-left: 2px solid var(--ink);
+}
+.admin__feedback-bugs-label {
+  font-family: var(--font-cond);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  opacity: 0.6;
 }
 
 /* ── Admin: ERD ── */

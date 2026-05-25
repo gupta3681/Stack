@@ -186,6 +186,23 @@ export interface SchemaInfo {
   tables: TableInfo[];
 }
 
+export interface FeedbackInput {
+  rating: number; // 1-5
+  comments?: string | null;
+  bugs?: string | null;
+}
+
+export interface FeedbackEntry {
+  id: number;
+  rating: number;
+  comments: string | null;
+  bugs: string | null;
+  created_at: string;
+  user_id: number;
+  user_email: string;
+  user_display_name: string | null;
+}
+
 export interface StackCounts {
   today: number;
   tomorrow: number;

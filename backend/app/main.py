@@ -6,7 +6,7 @@ from sqlalchemy import inspect, text
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from .database import Base, engine
-from .routers import admin, auth, public, stacks, tasks
+from .routers import admin, auth, feedback, public, stacks, tasks
 from .security import enforce_csrf_header
 
 
@@ -295,6 +295,7 @@ app.include_router(stacks.router)
 app.include_router(tasks.router)
 app.include_router(public.router)
 app.include_router(admin.router)
+app.include_router(feedback.router)
 
 
 @app.get("/health")

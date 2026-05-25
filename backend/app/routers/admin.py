@@ -115,6 +115,22 @@ class SchemaInfo(BaseModel):
     tables: list[TableInfo]
 
 
+class FeedbackEntry(BaseModel):
+    """One feedback row enriched with the submitter's identity. Admin
+    surface only — regular users never see other users' feedback."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    rating: int
+    comments: str | None
+    bugs: str | None
+    created_at: datetime
+    user_id: int
+    user_email: str
+    user_display_name: str | None
+
+
 class AdminUser(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
@@ -363,6 +379,39 @@ def admin_schema(
             )
         tables.append(TableInfo(name=table_name, columns=columns))
     return SchemaInfo(tables=tables)
+
+
+@router.get("/feedback", response_model=list[FeedbackEntry])
+def admin_feedback(
+    db: DbSession = Depends(get_db),
+    _admin: models.User = Depends(auth_service.require_admin),
+):
+    """All feedback entries, newest first, joined with submitter identity.
+
+    No pagination — at small scale a flat list is more useful than a
+    paginated one. Add limit/offset when this hits a few hundred rows.
+    """
+    rows = (
+        db.execute(
+            select(models.Feedback, models.User)
+            .join(models.User, models.Feedback.user_id == models.User.id)
+            .order_by(models.Feedback.created_at.desc())
+        )
+        .all()
+    )
+    return [
+        FeedbackEntry(
+            id=fb.id,
+            rating=fb.rating,
+            comments=fb.comments,
+            bugs=fb.bugs,
+            created_at=fb.created_at,
+            user_id=user.id,
+            user_email=user.email,
+            user_display_name=user.display_name,
+        )
+        for fb, user in rows
+    ]
 
 
 @router.get("/users", response_model=list[AdminUser])

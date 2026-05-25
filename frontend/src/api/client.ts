@@ -6,6 +6,8 @@ import type {
   AuthUser,
   CreateTaskInput,
   CreateTopicStackInput,
+  FeedbackEntry,
+  FeedbackInput,
   LoginInput,
   PublicStack,
   SchemaInfo,
@@ -198,4 +200,13 @@ export const api = {
   getAdminStats: () => request<AdminStats>("/admin/stats"),
   listAdminUsers: () => request<AdminUser[]>("/admin/users"),
   getAdminSchema: () => request<SchemaInfo>("/admin/schema"),
+  listAdminFeedback: () => request<FeedbackEntry[]>("/admin/feedback"),
+
+  // ── Feedback ──
+
+  submitFeedback: (input: FeedbackInput) =>
+    request<FeedbackEntry>("/feedback", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 };

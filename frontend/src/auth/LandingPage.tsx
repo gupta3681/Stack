@@ -2,19 +2,6 @@ import { useState, type FormEvent } from "react";
 import { useAuth } from "./AuthContext";
 import { ApiError } from "../api/client";
 
-/**
- * One-liner copied by the "Copy starter command" button under the hero
- * lede. Installs the Stack skill into the user's Claude Code skills
- * directory — paste it in a terminal and Claude Code immediately knows
- * how to drive Stack (add tasks, pull from topic stacks, mark done,
- * share, etc.) using their personal API token. Self-contained: makes
- * the directory if missing, then downloads the canonical SKILL.md from
- * the repo's main branch.
- */
-const STARTER_CURL = `mkdir -p ~/.claude/skills/stack && curl -fsSL \\
-  https://raw.githubusercontent.com/gupta3681/Stack/main/.claude/skills/stack/SKILL.md \\
-  -o ~/.claude/skills/stack/SKILL.md`;
-
 type Mode = "signup" | "login";
 
 /**
@@ -35,18 +22,6 @@ export function LandingPage() {
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [curlCopied, setCurlCopied] = useState(false);
-
-  const copyStarterCurl = async () => {
-    try {
-      await navigator.clipboard.writeText(STARTER_CURL);
-      setCurlCopied(true);
-      setTimeout(() => setCurlCopied(false), 2000);
-    } catch {
-      // Clipboard unavailable on HTTP origins; quietly no-op. Curious
-      // visitors can still triple-click the lede or read the SKILL.md.
-    }
-  };
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -125,14 +100,6 @@ export function LandingPage() {
             reads across your stacks and proposes what should move where,
             based on what you're focused on right now.
           </p>
-          <button
-            type="button"
-            className="landing__copy-curl"
-            onClick={copyStarterCurl}
-            aria-label="Copy a starter command that shows your stack from the terminal"
-          >
-            {curlCopied ? "Copied ✓" : "Copy starter command"}
-          </button>
         </div>
 
         <aside className="landing__hero-auth" aria-label="Get started">

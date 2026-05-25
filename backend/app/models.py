@@ -2,6 +2,7 @@ import enum
 from datetime import date, datetime
 
 from sqlalchemy import (
+    CheckConstraint,
     Date,
     DateTime,
     Enum,
@@ -72,6 +73,33 @@ class Session(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     expires_at: Mapped[datetime] = mapped_column(DateTime)
     user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
+class Feedback(Base):
+    """User-submitted feedback collected via the in-app Feedback modal.
+
+    Tied to user_id so the owner reading /admin/feedback can follow up if
+    needed. CASCADE on user delete — no orphan feedback floating around if
+    we ever wire up account deletion.
+
+    `rating` is constrained 1–5 at both the Pydantic layer (request
+    validation) and the DB layer (CheckConstraint) so any client that
+    bypasses Pydantic still can't write garbage.
+    """
+
+    __tablename__ = "feedback"
+    __table_args__ = (
+        CheckConstraint("rating >= 1 AND rating <= 5", name="feedback_rating_range"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    rating: Mapped[int] = mapped_column(Integer)
+    comments: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bugs: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
 class ApiToken(Base):

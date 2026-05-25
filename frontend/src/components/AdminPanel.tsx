@@ -4,6 +4,7 @@ import {
   TOPIC_KINDS,
   type AdminStats,
   type ColumnInfo,
+  type FeedbackEntry,
   type SchemaInfo,
   type TableInfo,
 } from "../types";
@@ -38,6 +39,11 @@ export function AdminPanel() {
     // override just unbinds from the global 5s staleTime so we don't even
     // bother revalidating in the background.
     staleTime: 60 * 60 * 1000,
+  });
+  const feedbackQuery = useQuery({
+    queryKey: ["admin-feedback"],
+    queryFn: () => api.listAdminFeedback(),
+    staleTime: 0,
   });
 
   const forbidden =
@@ -158,6 +164,30 @@ export function AdminPanel() {
           )}
         </>
       )}
+
+      <section className="admin__section">
+        <h2 className="admin__section-title">
+          Feedback
+          {feedbackQuery.data && (
+            <span className="admin__section-meta">
+              {" · "}
+              {feedbackQuery.data.length}{" "}
+              {feedbackQuery.data.length === 1 ? "entry" : "entries"}
+            </span>
+          )}
+        </h2>
+        {feedbackQuery.isLoading && <div className="empty">Loading…</div>}
+        {feedbackQuery.data && feedbackQuery.data.length === 0 && (
+          <div className="empty">— no feedback yet —</div>
+        )}
+        {feedbackQuery.data && feedbackQuery.data.length > 0 && (
+          <ul className="admin__feedback">
+            {feedbackQuery.data.map((f) => (
+              <FeedbackCard key={f.id} entry={f} />
+            ))}
+          </ul>
+        )}
+      </section>
 
       {schemaQuery.data && (
         <section className="admin__section">
@@ -390,6 +420,37 @@ function Sparkline({
         />
       </svg>
     </div>
+  );
+}
+
+// ── Feedback card ──────────────────────────────────────────────────────────
+
+function FeedbackCard({ entry }: { entry: FeedbackEntry }) {
+  const author = entry.user_display_name || entry.user_email;
+  return (
+    <li className="admin__feedback-card">
+      <div className="admin__feedback-head">
+        <span
+          className={`admin__feedback-rating admin__feedback-rating--r${entry.rating}`}
+          aria-label={`Rating ${entry.rating} of 5`}
+        >
+          {entry.rating}
+        </span>
+        <span className="admin__feedback-author">{author}</span>
+        <span className="admin__feedback-when">
+          {formatStamp(entry.created_at)}
+        </span>
+      </div>
+      {entry.comments && (
+        <p className="admin__feedback-body">{entry.comments}</p>
+      )}
+      {entry.bugs && (
+        <div className="admin__feedback-bugs">
+          <div className="admin__feedback-bugs-label">Bugs</div>
+          <p className="admin__feedback-body">{entry.bugs}</p>
+        </div>
+      )}
+    </li>
   );
 }
 
