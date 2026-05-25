@@ -8,6 +8,7 @@ import type {
   CreateTopicStackInput,
   LoginInput,
   PublicStack,
+  SchemaInfo,
   SignupInput,
   Stack,
   StackCounts,
@@ -196,4 +197,5 @@ export const api = {
 
   getAdminStats: () => request<AdminStats>("/admin/stats"),
   listAdminUsers: () => request<AdminUser[]>("/admin/users"),
+  getAdminSchema: () => request<SchemaInfo>("/admin/schema"),
 };

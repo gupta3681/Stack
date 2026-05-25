@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session as DbSession
 
 from .. import auth as auth_service
 from .. import models
-from ..database import get_db
+from ..database import Base, get_db
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -89,6 +89,30 @@ class AdminStats(BaseModel):
     recent_signups: list[RecentSignup]
     timeseries: TimeSeries
     generated_at: datetime
+
+
+class ColumnInfo(BaseModel):
+    """One column in a table — flattened for the frontend ERD."""
+    name: str
+    type: str
+    primary_key: bool = False
+    nullable: bool = True
+    unique: bool = False
+    indexed: bool = False
+    # "table.column" of the FK target, or None if not a foreign key.
+    references: str | None = None
+
+
+class TableInfo(BaseModel):
+    name: str
+    columns: list[ColumnInfo]
+
+
+class SchemaInfo(BaseModel):
+    """Live introspection of the SQLAlchemy schema. Powers the admin ERD —
+    no manual diagram maintenance, so adding a column or table shows up
+    instantly without anyone updating the diagram source."""
+    tables: list[TableInfo]
 
 
 class AdminUser(BaseModel):
@@ -295,6 +319,50 @@ def admin_stats(
         ),
         generated_at=now,
     )
+
+
+@router.get("/schema", response_model=SchemaInfo)
+def admin_schema(
+    _admin: models.User = Depends(auth_service.require_admin),
+):
+    """Introspect the live SQLAlchemy schema for the ERD on the admin page.
+
+    Drives both the visual diagram (table boxes + FK arrows) and the
+    per-table column detail cards. Always in sync with `models.py` — no
+    hand-maintained diagram source to drift.
+
+    Why allowlist tables here: `Base.metadata.tables` would also catch any
+    junction or temp tables a contributor adds without thinking; by naming
+    them explicitly we guarantee the diagram only ever shows real domain
+    tables and the order in the response is stable. Add new tables to
+    this list when you add them to models.py.
+    """
+    domain_tables = ["users", "sessions", "api_tokens", "stacks", "tasks"]
+    tables: list[TableInfo] = []
+    for table_name in domain_tables:
+        table = Base.metadata.tables.get(table_name)
+        if table is None:
+            continue  # tolerate a not-yet-migrated table during dev
+        columns: list[ColumnInfo] = []
+        for col in table.columns:
+            fks = list(col.foreign_keys)
+            references = None
+            if fks:
+                target = fks[0].column
+                references = f"{target.table.name}.{target.name}"
+            columns.append(
+                ColumnInfo(
+                    name=col.name,
+                    type=str(col.type),
+                    primary_key=col.primary_key,
+                    nullable=col.nullable if col.nullable is not None else True,
+                    unique=bool(col.unique),
+                    indexed=bool(col.index),
+                    references=references,
+                )
+            )
+        tables.append(TableInfo(name=table_name, columns=columns))
+    return SchemaInfo(tables=tables)
 
 
 @router.get("/users", response_model=list[AdminUser])

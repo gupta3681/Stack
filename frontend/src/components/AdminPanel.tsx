@@ -1,6 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { ApiError, api } from "../api/client";
-import { TOPIC_KINDS, type AdminStats } from "../types";
+import {
+  TOPIC_KINDS,
+  type AdminStats,
+  type ColumnInfo,
+  type SchemaInfo,
+  type TableInfo,
+} from "../types";
 
 /**
  * Admin analytics view. Mono-friendly visuals (no chart library — all SVG
@@ -24,6 +30,14 @@ export function AdminPanel() {
     queryKey: ["admin-users"],
     queryFn: () => api.listAdminUsers(),
     staleTime: 0,
+  });
+  const schemaQuery = useQuery({
+    queryKey: ["admin-schema"],
+    queryFn: () => api.getAdminSchema(),
+    // Schema only changes on deploy — cheap to leave cached forever; this
+    // override just unbinds from the global 5s staleTime so we don't even
+    // bother revalidating in the background.
+    staleTime: 60 * 60 * 1000,
   });
 
   const forbidden =
@@ -143,6 +157,18 @@ export function AdminPanel() {
             </section>
           )}
         </>
+      )}
+
+      {schemaQuery.data && (
+        <section className="admin__section">
+          <h2 className="admin__section-title">Schema</h2>
+          <SchemaERD schema={schemaQuery.data} />
+          <div className="admin__schema-grid">
+            {schemaQuery.data.tables.map((t) => (
+              <TableCard key={t.name} table={t} />
+            ))}
+          </div>
+        </section>
       )}
 
       <section className="admin__section">
@@ -365,6 +391,221 @@ function Sparkline({
       </svg>
     </div>
   );
+}
+
+// ── Schema diagram ─────────────────────────────────────────────────────────
+
+/**
+ * Layout for the inline SVG ERD. Hand-positioned for Stack's 5 domain
+ * tables: `users` sits center-top, the four children fan out across the
+ * row below. FK arrows fan up to users from each child; the one
+ * non-user FK (tasks → stacks) draws as a horizontal arrow on the same
+ * row.
+ *
+ * If we ever add a 6th+ table, redo the positions or punt to a layout
+ * library (dagre, elkjs). For 5 it's faster + lighter to position by hand.
+ */
+const ERD_W = 880;
+const ERD_H = 280;
+const ERD_BOX_W = 150;
+const ERD_BOX_H = 60;
+
+const ERD_BOXES: Record<string, { x: number; y: number }> = {
+  users: { x: 365, y: 20 },
+  sessions: { x: 30, y: 180 },
+  api_tokens: { x: 210, y: 180 },
+  stacks: { x: 510, y: 180 },
+  tasks: { x: 700, y: 180 },
+};
+
+/** Pre-computed FK arrows. Each is [fromTable, toTable, geometry]. */
+const ERD_ARROWS: { from: string; to: string }[] = [
+  { from: "sessions", to: "users" },
+  { from: "api_tokens", to: "users" },
+  { from: "stacks", to: "users" },
+  { from: "tasks", to: "users" },
+  { from: "tasks", to: "stacks" }, // sibling — drawn horizontally
+];
+
+function SchemaERD({ schema }: { schema: SchemaInfo }) {
+  const colCounts = new Map(
+    schema.tables.map((t) => [t.name, t.columns.length])
+  );
+
+  return (
+    <div className="admin__erd-wrap">
+      <div className="admin__chart-caption">Relationships</div>
+      <svg
+        className="admin__erd"
+        viewBox={`0 0 ${ERD_W} ${ERD_H}`}
+        role="img"
+        aria-label="Entity relationship diagram"
+      >
+        <defs>
+          <marker
+            id="erd-arrow"
+            viewBox="0 0 10 10"
+            refX="9"
+            refY="5"
+            markerWidth="8"
+            markerHeight="8"
+            orient="auto-start-reverse"
+          >
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--ink)" />
+          </marker>
+        </defs>
+
+        {/* Arrows first so the boxes paint over the line endpoints. */}
+        {ERD_ARROWS.map((a, i) => {
+          const from = ERD_BOXES[a.from];
+          const to = ERD_BOXES[a.to];
+          if (!from || !to) return null;
+          // Sibling row (tasks → stacks): horizontal from left edge of
+          // `from` to right edge of `to`, both at row midline.
+          if (from.y === to.y) {
+            const y = from.y + ERD_BOX_H / 2;
+            return (
+              <line
+                key={i}
+                x1={from.x}
+                y1={y}
+                x2={to.x + ERD_BOX_W}
+                y2={y}
+                stroke="var(--ink)"
+                strokeWidth="1"
+                markerEnd="url(#erd-arrow)"
+              />
+            );
+          }
+          // Parent-child: from top-center of child up to bottom-center
+          // of parent (users sits above all four).
+          const x1 = from.x + ERD_BOX_W / 2;
+          const y1 = from.y;
+          const x2 = to.x + ERD_BOX_W / 2;
+          const y2 = to.y + ERD_BOX_H;
+          return (
+            <line
+              key={i}
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke="var(--ink)"
+              strokeWidth="1"
+              markerEnd="url(#erd-arrow)"
+            />
+          );
+        })}
+
+        {/* Boxes */}
+        {Object.entries(ERD_BOXES).map(([name, pos]) => {
+          const count = colCounts.get(name) ?? 0;
+          return (
+            <g key={name} transform={`translate(${pos.x}, ${pos.y})`}>
+              <rect
+                width={ERD_BOX_W}
+                height={ERD_BOX_H}
+                fill="var(--canvas)"
+                stroke="var(--ink)"
+                strokeWidth="1"
+              />
+              <text
+                x={ERD_BOX_W / 2}
+                y={26}
+                textAnchor="middle"
+                className="admin__erd-name"
+              >
+                {name}
+              </text>
+              <text
+                x={ERD_BOX_W / 2}
+                y={46}
+                textAnchor="middle"
+                className="admin__erd-sub"
+              >
+                {count} cols
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+      <div className="admin__erd-legend">
+        Arrows point from the FK column to its referenced table. Tables
+        without arrows are top-level (no FK out).
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Per-table column detail card. The diagram above gives you the
+ * topology — these cards give you "what's actually in each table" so
+ * you can think about where a new field belongs.
+ */
+function TableCard({ table }: { table: TableInfo }) {
+  return (
+    <div className="admin__schema-card">
+      <div className="admin__schema-card-head">
+        <span className="admin__schema-card-name">{table.name}</span>
+        <span className="admin__schema-card-count">
+          {table.columns.length} cols
+        </span>
+      </div>
+      <ul className="admin__schema-cols">
+        {table.columns.map((c) => (
+          <ColumnRow key={c.name} col={c} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function ColumnRow({ col }: { col: ColumnInfo }) {
+  return (
+    <li className="admin__schema-col">
+      <span className="admin__schema-col-name">{col.name}</span>
+      <span className="admin__schema-col-type">{shortType(col.type)}</span>
+      <span className="admin__schema-col-flags">
+        {col.primary_key && (
+          <span className="admin__schema-flag" title="Primary key">
+            PK
+          </span>
+        )}
+        {col.references && (
+          <span
+            className="admin__schema-flag admin__schema-flag--fk"
+            title={`References ${col.references}`}
+          >
+            → {col.references.split(".")[0]}
+          </span>
+        )}
+        {col.unique && !col.primary_key && (
+          <span className="admin__schema-flag" title="Unique">
+            uniq
+          </span>
+        )}
+        {col.nullable && (
+          <span
+            className="admin__schema-flag admin__schema-flag--null"
+            title="Nullable"
+          >
+            ?
+          </span>
+        )}
+        {col.indexed && !col.primary_key && !col.unique && (
+          <span className="admin__schema-flag" title="Indexed">
+            idx
+          </span>
+        )}
+      </span>
+    </li>
+  );
+}
+
+/** SQLAlchemy types come back as long strings like "VARCHAR(320)". The
+ * ERD doesn't need that fidelity; trim to the kind. */
+function shortType(t: string): string {
+  return t.replace(/\(.*\)/, "").toLowerCase();
 }
 
 // ── Util ───────────────────────────────────────────────────────────────────

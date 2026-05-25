@@ -194,6 +194,43 @@ def test_non_admin_bearer_token_gets_403(auth_client: TestClient):
     assert r.status_code == 403
 
 
+def test_schema_endpoint_returns_introspection(auth_client):
+    """The /admin/schema endpoint reflects the actual SQLAlchemy models.
+    If this test breaks because a column was renamed or a table was added,
+    that's good — the diagram on the admin page would also need updating
+    (or, since it's auto-generated from the same introspection, just a
+    sanity check on the allowlist)."""
+    _make_admin(auth_client, "aryan@example.com")
+    r = auth_client.get("/admin/schema")
+    assert r.status_code == 200
+    tables = {t["name"]: t for t in r.json()["tables"]}
+    # All five domain tables present.
+    assert set(tables.keys()) == {"users", "sessions", "api_tokens", "stacks", "tasks"}
+
+    # Spot-check users — id is PK, email is unique, is_admin exists.
+    cols = {c["name"]: c for c in tables["users"]["columns"]}
+    assert cols["id"]["primary_key"] is True
+    assert cols["email"]["unique"] is True
+    assert "is_admin" in cols  # added in the admin v1 work
+
+    # Spot-check that FK relationships are surfaced correctly.
+    task_cols = {c["name"]: c for c in tables["tasks"]["columns"]}
+    assert task_cols["user_id"]["references"] == "users.id"
+    assert task_cols["stack_id"]["references"] == "stacks.id"
+
+    # Never expose password_hash as anything secret-flavored — it's just a
+    # column, but we want to make sure it's listed (not hidden by accident).
+    user_col_names = {c["name"] for c in tables["users"]["columns"]}
+    assert "password_hash" in user_col_names
+
+
+def test_schema_endpoint_requires_admin(auth_client):
+    """Schema is admin-only — it's not secret per se but it's a
+    contributor-facing tool, not user-facing."""
+    r = auth_client.get("/admin/schema")
+    assert r.status_code == 403
+
+
 def test_admin_emails_env_auto_promotes_on_session_resolve(monkeypatch):
     """Setting ADMIN_EMAILS before app import auto-promotes matching users
     on their next request. Must reload auth module so its module-level

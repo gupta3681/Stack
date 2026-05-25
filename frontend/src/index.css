@@ -2482,6 +2482,131 @@ textarea:focus {
   background: var(--canvas);
 }
 
+/* ── Admin: ERD ── */
+
+.admin__erd-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.admin__erd {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--ink);
+  background: var(--canvas);
+  /* On narrow screens let the diagram scroll horizontally instead of
+   * squishing the boxes into illegibility. */
+  min-height: 240px;
+}
+.admin__erd-name {
+  font-family: var(--font-cond);
+  font-size: 13px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  fill: var(--ink);
+}
+.admin__erd-sub {
+  font-family: var(--font-nh);
+  font-size: 11px;
+  fill: var(--ink);
+  opacity: 0.55;
+}
+.admin__erd-legend {
+  font-family: var(--font-nh);
+  font-size: 12px;
+  color: var(--ink);
+  opacity: 0.6;
+  letter-spacing: -0.01em;
+}
+
+/* ── Admin: per-table column cards ── */
+
+.admin__schema-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+.admin__schema-card {
+  border: 1px solid var(--ink);
+  background: var(--canvas);
+}
+.admin__schema-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--ink);
+}
+.admin__schema-card-name {
+  font-family: var(--font-cond);
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.admin__schema-card-count {
+  font-family: var(--font-cond);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink);
+  opacity: 0.55;
+}
+.admin__schema-cols {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.admin__schema-col {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: baseline;
+  column-gap: 10px;
+  padding: 6px 14px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  color: var(--ink);
+  border-bottom: 1px solid var(--ink);
+}
+.admin__schema-col:last-child {
+  border-bottom: 0;
+}
+.admin__schema-col-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.admin__schema-col-type {
+  font-size: 11px;
+  opacity: 0.55;
+  white-space: nowrap;
+}
+.admin__schema-col-flags {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  white-space: nowrap;
+}
+.admin__schema-flag {
+  font-family: var(--font-cond);
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  border: 1px solid var(--ink);
+  padding: 1px 5px;
+  color: var(--ink);
+}
+.admin__schema-flag--fk {
+  background: var(--ink);
+  color: var(--canvas);
+}
+.admin__schema-flag--null {
+  border: 0;
+  padding: 1px 2px;
+  opacity: 0.55;
+}
+
 /* ─── Mobile / responsive ───
  * Keep the Mono aesthetic intact on small screens: still monochrome, still
  * sharp borders, still typography-driven hierarchy. Scale everything down

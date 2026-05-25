@@ -166,6 +166,26 @@ export interface AdminUser {
   last_session_at: string | null;
 }
 
+export interface ColumnInfo {
+  name: string;
+  type: string;
+  primary_key: boolean;
+  nullable: boolean;
+  unique: boolean;
+  indexed: boolean;
+  /** "table.column" if this column is a FK, else null. */
+  references: string | null;
+}
+
+export interface TableInfo {
+  name: string;
+  columns: ColumnInfo[];
+}
+
+export interface SchemaInfo {
+  tables: TableInfo[];
+}
+
 export interface StackCounts {
   today: number;
   tomorrow: number;
