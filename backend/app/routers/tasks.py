@@ -111,6 +111,44 @@ def _shift_in_range(
         task.position += by
 
 
+def _move_task_to_end_of_stack(
+    db: Session, user_id: int, task: models.Task
+) -> None:
+    """Move `task` to the highest position in its current stack, sliding every
+    task between its old position and the bottom up by 1 to close the gap.
+
+    Called when a task transitions to a terminal status (done/cancelled). The
+    intent: keep the "top of the stack = next thing to do" metaphor honest.
+    A done item at position 0 was still visually dominating (largest prominence
+    tier) even though it's out of the queue.
+
+    No-op for backlog tasks (stack_id=None) — positions are meaningless there.
+    No-op if the task is already at or past the bottom.
+    """
+    if task.stack_id is None:
+        return
+    others_stmt = select(models.Task.position).where(
+        models.Task.user_id == user_id,
+        models.Task.stack_id == task.stack_id,
+        models.Task.id != task.id,
+    )
+    other_positions = db.execute(others_stmt).scalars().all()
+    if not other_positions:
+        return  # only task in the stack
+    max_pos = max(other_positions)
+    if task.position >= max_pos:
+        return  # already at the bottom
+
+    old_position = task.position
+    # Shift everything between old+1 and max_pos UP by 1 — the current task is
+    # excluded (it's at old_position, so out of the range), and the row that
+    # was at max_pos moves to max_pos-1 to make room.
+    _shift_in_range(
+        db, user_id, task.stack_id, old_position + 1, max_pos, by=-1
+    )
+    task.position = max_pos
+
+
 @router.get("/backlog", response_model=list[schemas.TaskOut])
 def get_backlog(
     db: Session = Depends(get_db),
@@ -191,19 +229,36 @@ def update_task(
         # creation time and changed via drag/reorder, not via PATCH.
         task.priority_hint = fields["priority_hint"]
     if "status" in fields and fields["status"] is not None:
-        task.status = fields["status"]
-        if fields["status"] == models.TaskStatus.done:
+        # Capture old status so we can detect a real transition. Idempotent
+        # "set to done again" PATCHes should NOT re-trigger the move-to-end
+        # logic; otherwise a no-op call would shuffle the stack.
+        old_status = task.status
+        new_status = fields["status"]
+        task.status = new_status
+        is_transition = old_status != new_status
+
+        if new_status == models.TaskStatus.done:
             _commit_elapsed_if_running(task)
             if task.completed_at is None:
                 task.completed_at = _now()
-        elif fields["status"] == models.TaskStatus.cancelled:
+            if is_transition:
+                # Done items shouldn't visually occupy a prominent slot —
+                # move to the bottom of the stack so what's actually next
+                # bubbles to the top.
+                _move_task_to_end_of_stack(db, current_user.id, task)
+        elif new_status == models.TaskStatus.cancelled:
             # Cancelling preserves completed_at — a previously-done task that
             # gets cancelled shouldn't lose its completion timestamp.
             _commit_elapsed_if_running(task)
+            if is_transition:
+                _move_task_to_end_of_stack(db, current_user.id, task)
         else:
             task.completed_at = None
-            if fields["status"] != models.TaskStatus.in_progress:
+            if new_status != models.TaskStatus.in_progress:
                 _commit_elapsed_if_running(task)
+            # Reviving a done/cancelled task does NOT restore its old
+            # position — we never stored the original. It stays at the
+            # bottom; the user can drag it back up if they want.
 
     db.commit()
     db.refresh(task)

@@ -222,3 +222,108 @@ def test_reorder_requires_exact_set_of_stack_tasks(auth_client: TestClient):
     assert r.status_code == 200
     stack = auth_client.get("/stacks/2026-06-01").json()
     assert [t["id"] for t in stack["tasks"]] == [b["id"], a["id"]]
+
+
+# ── done/cancelled → move-to-end behavior ──────────────────────────────────
+
+
+def test_marking_top_task_done_moves_it_to_bottom(auth_client: TestClient):
+    """The whole 'top = next thing to do' metaphor breaks if a done task
+    keeps its prominent slot. Marking the #1 task done should slide it to
+    the bottom and bubble the others up."""
+    a = _create(auth_client, name="a")  # pos 0
+    b = _create(auth_client, name="b")  # pos 1
+    c = _create(auth_client, name="c")  # pos 2
+
+    r = auth_client.patch(f"/tasks/{a['id']}", json={"status": "done"})
+    assert r.status_code == 200
+
+    stack = auth_client.get("/stacks/2026-06-01").json()
+    order = [(t["name"], t["position"], t["status"]) for t in stack["tasks"]]
+    assert order == [
+        ("b", 0, "pending"),
+        ("c", 1, "pending"),
+        ("a", 2, "done"),
+    ]
+
+
+def test_marking_middle_task_done_compacts_positions(auth_client: TestClient):
+    """Done from the middle should also slide to the bottom; the gap closes
+    so positions stay dense from 0."""
+    a = _create(auth_client, name="a")  # pos 0
+    b = _create(auth_client, name="b")  # pos 1
+    c = _create(auth_client, name="c")  # pos 2
+    d = _create(auth_client, name="d")  # pos 3
+
+    auth_client.patch(f"/tasks/{b['id']}", json={"status": "done"})
+
+    stack = auth_client.get("/stacks/2026-06-01").json()
+    order = [(t["name"], t["position"]) for t in stack["tasks"]]
+    assert order == [("a", 0), ("c", 1), ("d", 2), ("b", 3)]
+
+
+def test_marking_bottom_task_done_is_a_noop_for_position(auth_client: TestClient):
+    """No shuffle needed if it's already at the bottom."""
+    a = _create(auth_client, name="a")  # pos 0
+    b = _create(auth_client, name="b")  # pos 1
+    auth_client.patch(f"/tasks/{b['id']}", json={"status": "done"})
+    stack = auth_client.get("/stacks/2026-06-01").json()
+    assert [(t["name"], t["position"]) for t in stack["tasks"]] == [
+        ("a", 0), ("b", 1),
+    ]
+
+
+def test_marking_done_again_is_idempotent_for_position(auth_client: TestClient):
+    """A second PATCH status=done on an already-done task must NOT shuffle
+    the stack — otherwise an agent that retries gets surprising reorders."""
+    a = _create(auth_client, name="a")  # pos 0
+    b = _create(auth_client, name="b")  # pos 1
+    c = _create(auth_client, name="c")  # pos 2
+
+    auth_client.patch(f"/tasks/{a['id']}", json={"status": "done"})
+    # After first done: order is [b=0, c=1, a=2]
+    auth_client.patch(f"/tasks/{a['id']}", json={"status": "done"})
+    # Second call should be a no-op for ordering
+    stack = auth_client.get("/stacks/2026-06-01").json()
+    assert [(t["name"], t["position"]) for t in stack["tasks"]] == [
+        ("b", 0), ("c", 1), ("a", 2),
+    ]
+
+
+def test_cancelling_also_moves_to_bottom(auth_client: TestClient):
+    """Cancel is the same UX category as done — out of the active queue.
+    Same move-to-bottom behavior."""
+    a = _create(auth_client, name="a")
+    b = _create(auth_client, name="b")
+    c = _create(auth_client, name="c")
+
+    auth_client.patch(f"/tasks/{a['id']}", json={"status": "cancelled"})
+
+    stack = auth_client.get("/stacks/2026-06-01").json()
+    assert [(t["name"], t["position"], t["status"]) for t in stack["tasks"]] == [
+        ("b", 0, "pending"),
+        ("c", 1, "pending"),
+        ("a", 2, "cancelled"),
+    ]
+
+
+def test_reviving_done_task_keeps_bottom_position(auth_client: TestClient):
+    """When you flip done back to pending, we don't try to restore the
+    original position — we never stored it. It stays at the bottom; the
+    user can drag it back up if they want."""
+    a = _create(auth_client, name="a")  # pos 0
+    b = _create(auth_client, name="b")  # pos 1
+    c = _create(auth_client, name="c")  # pos 2
+
+    auth_client.patch(f"/tasks/{a['id']}", json={"status": "done"})
+    # a is now at the bottom (pos 2)
+    auth_client.patch(f"/tasks/{a['id']}", json={"status": "pending"})
+
+    stack = auth_client.get("/stacks/2026-06-01").json()
+    order = [(t["name"], t["position"], t["status"]) for t in stack["tasks"]]
+    assert order == [
+        ("b", 0, "pending"),
+        ("c", 1, "pending"),
+        ("a", 2, "pending"),  # back to pending but stayed at bottom
+    ]
+
