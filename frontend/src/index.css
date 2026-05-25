@@ -2312,6 +2312,153 @@ textarea:focus {
   text-align: right;
 }
 
+/* ── Admin: chart wrappers ── */
+
+.admin__chart {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.admin__chart-caption {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-family: var(--font-cond);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  opacity: 0.65;
+}
+.admin__chart-meta {
+  font-family: var(--font-nh);
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 12px;
+}
+
+/* Status bar — single horizontal bar split into opacity-tiered segments. */
+.admin__bar {
+  display: flex;
+  height: 36px;
+  border: 1px solid var(--ink);
+  overflow: hidden;
+}
+.admin__bar-segment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  color: var(--canvas);
+  font-family: var(--font-cond);
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  border-right: 1px solid var(--ink);
+}
+.admin__bar-segment:last-child {
+  border-right: 0;
+}
+/* Hide the inline count if the segment is too narrow to read it. The
+ * tooltip on the segment still has the data. */
+.admin__bar-segment-label {
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+.admin__bar-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-cond);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+/* Legend mapping swatches → labels → counts. */
+.admin__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.admin__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-cond);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.admin__legend-swatch {
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--ink);
+  display: inline-block;
+}
+.admin__legend-value {
+  font-family: var(--font-nh);
+  font-size: 13px;
+  letter-spacing: 0;
+  color: var(--ink);
+  opacity: 0.7;
+}
+
+/* Kind bars — one row per topic kind. Label, bar fills width by count,
+ * value on the right. Empty kinds still render as a hairline rail so the
+ * vocabulary stays visible. */
+.admin__kindbars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.admin__kindbar-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 32px;
+  align-items: center;
+  gap: 12px;
+}
+.admin__kindbar-label {
+  font-family: var(--font-cond);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.admin__kindbar-track {
+  display: block;
+  height: 14px;
+  border: 1px solid var(--ink);
+  position: relative;
+}
+.admin__kindbar-fill {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+}
+.admin__kindbar-value {
+  font-family: var(--font-nh);
+  font-size: 13px;
+  color: var(--ink);
+  text-align: right;
+}
+
+/* Sparkline — inline SVG, stretches to the section width. */
+.admin__spark {
+  display: block;
+  width: 100%;
+  height: 60px;
+  border: 1px solid var(--ink);
+  background: var(--canvas);
+}
+
 /* ─── Mobile / responsive ───
  * Keep the Mono aesthetic intact on small screens: still monochrome, still
  * sharp borders, still typography-driven hierarchy. Scale everything down

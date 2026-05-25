@@ -62,8 +62,19 @@ def test_admin_can_read_stats(auth_client: TestClient):
         "stacks",
         "api_tokens",
         "recent_signups",
+        "timeseries",
         "generated_at",
     }
+    # Timeseries: 30 contiguous days each, oldest first.
+    ts = body["timeseries"]
+    assert len(ts["signups_by_day"]) == 30
+    assert len(ts["completions_by_day"]) == 30
+    # Verify it's chronological + ISO-shaped.
+    dates = [d["date"] for d in ts["signups_by_day"]]
+    assert dates == sorted(dates)
+    assert all(len(d) == 10 for d in dates)  # YYYY-MM-DD
+    # The admin's own signup landed in the window so today's bucket is >=1.
+    assert ts["signups_by_day"][-1]["count"] >= 1
     assert body["users"]["total"] == 1  # just the one user signed up in fixture
     assert body["users"]["admin_count"] == 1
     # Recent signups should include the admin themselves and never expose

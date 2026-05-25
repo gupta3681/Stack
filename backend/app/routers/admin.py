@@ -9,7 +9,7 @@ These endpoints are read-only. If we add destructive admin actions later
 bearer can't, e.g., torch another user's data via a stolen admin token.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict
@@ -66,12 +66,28 @@ class RecentSignup(BaseModel):
     created_at: datetime
 
 
+class DailyBucket(BaseModel):
+    """One day in a 30-day time series. Date as ISO string for trivial
+    frontend rendering — we never do date math on it client-side."""
+    date: str
+    count: int
+
+
+class TimeSeries(BaseModel):
+    """Two 30-element arrays, oldest first. Frontend renders these as
+    sparklines. Always 30 entries — missing days are filled with count=0
+    so the visual is a contiguous strip, not a sparse one."""
+    signups_by_day: list[DailyBucket]
+    completions_by_day: list[DailyBucket]
+
+
 class AdminStats(BaseModel):
     users: UserStats
     tasks: TaskStats
     stacks: StackStats
     api_tokens: ApiTokenStats
     recent_signups: list[RecentSignup]
+    timeseries: TimeSeries
     generated_at: datetime
 
 
@@ -86,6 +102,44 @@ class AdminUser(BaseModel):
     # Aggregates joined in via separate queries — not actual ORM columns.
     task_count: int = 0
     last_session_at: datetime | None = None
+
+
+# ── Helpers ────────────────────────────────────────────────────────────────
+
+
+def _daily_counts(
+    db: DbSession, column, days: int
+) -> list[DailyBucket]:
+    """Return `days`-element list of {date, count} buckets, oldest first.
+
+    `column` is the timestamp column to bucket on (User.created_at,
+    Task.completed_at, etc.). Days with no rows get count=0 — the array
+    is always exactly `days` long so the frontend can render a contiguous
+    sparkline without nulls.
+
+    Works on both SQLite and Postgres: func.date() returns a date in pg
+    and an ISO string in sqlite; we normalize to ISO strings either way.
+    """
+    today = _now().date()
+    start = today - timedelta(days=days - 1)
+    rows = db.execute(
+        select(func.date(column).label("d"), func.count())
+        .where(column >= datetime.combine(start, datetime.min.time()))
+        .group_by("d")
+    ).all()
+    counts: dict[str, int] = {}
+    for d_val, n in rows:
+        if isinstance(d_val, date):
+            counts[d_val.isoformat()] = n
+        else:
+            counts[str(d_val)] = n
+    return [
+        DailyBucket(
+            date=(start + timedelta(days=i)).isoformat(),
+            count=counts.get((start + timedelta(days=i)).isoformat(), 0),
+        )
+        for i in range(days)
+    ]
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────────
@@ -206,6 +260,9 @@ def admin_stats(
         .all()
     )
 
+    signups_30d = _daily_counts(db, models.User.created_at, days=30)
+    completions_30d = _daily_counts(db, models.Task.completed_at, days=30)
+
     return AdminStats(
         users=UserStats(
             total=total_users,
@@ -232,6 +289,10 @@ def admin_stats(
             used_last_7d=token_used_7d,
         ),
         recent_signups=[RecentSignup.model_validate(u) for u in recent],
+        timeseries=TimeSeries(
+            signups_by_day=signups_30d,
+            completions_by_day=completions_30d,
+        ),
         generated_at=now,
     )
 

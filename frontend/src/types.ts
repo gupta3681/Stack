@@ -147,6 +147,11 @@ export interface AdminStats {
     display_name: string | null;
     created_at: string;
   }[];
+  timeseries: {
+    /** 30 contiguous days, oldest first, zero-filled. */
+    signups_by_day: { date: string; count: number }[];
+    completions_by_day: { date: string; count: number }[];
+  };
   generated_at: string;
 }
 
