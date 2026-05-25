@@ -89,6 +89,15 @@ function AuthedApp() {
           >
             Stacks{navCount(counts?.topic_stacks)}
           </button>
+          <span className="topbar__sep" aria-hidden>
+            ·
+          </span>
+          {/* After the separator: account-area items. Admin is here because
+            * it's a role-gated section, not a data view (no count badge,
+            * doesn't share the rhythm of TODAY/TOMORROW/STACKS). Feedback
+            * is here because it's an action that opens a modal, not a
+            * destination. Grouping them keeps the primary-nav cadence
+            * on the left clean. */}
           {user?.is_admin && (
             <button
               type="button"
@@ -105,9 +114,6 @@ function AuthedApp() {
           >
             Feedback
           </button>
-          <span className="topbar__sep" aria-hidden>
-            ·
-          </span>
           <button
             type="button"
             className="topbar__user topbar__user--button"
