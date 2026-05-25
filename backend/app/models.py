@@ -53,6 +53,13 @@ class User(Base):
     # Set when the user dismisses the first-run onboarding tips. NULL means the
     # tips are still shown on next visit.
     onboarded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Admin flag — gates the /admin/* router. Bootstrapped via ADMIN_EMAILS
+    # env var (auto-promotes matching email on next session resolve).
+    # Promote-only: removing an email from ADMIN_EMAILS doesn't demote — that
+    # would have to be a manual DB flip.
+    is_admin: Mapped[bool] = mapped_column(
+        default=False, server_default=false(), nullable=False
+    )
 
 
 class Session(Base):

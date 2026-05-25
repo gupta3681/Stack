@@ -26,6 +26,17 @@ API_TOKEN_PREFIX = "stk_"
 # in the UI without leaking enough entropy to brute-force.
 API_TOKEN_DISPLAY_PREFIX_LEN = 12
 
+# Admin bootstrap. Comma-separated list of emails read at import time.
+# Matching emails get is_admin=True the first time they resolve a session
+# (browser login) or a bearer token. Promote-only — removing an email here
+# does NOT demote (that requires a DB flip), so a stale env can't accidentally
+# strip admin from someone still using the system.
+_ADMIN_EMAILS: set[str] = {
+    e.strip().lower()
+    for e in os.getenv("ADMIN_EMAILS", "").split(",")
+    if e.strip()
+}
+
 
 def _prehash(password: str) -> bytes:
     """SHA-256 the password so bcrypt's 72-byte input limit never bites.
@@ -174,6 +185,21 @@ def revoke_bearer_token(db: DbSession, raw: str) -> None:
         db.commit()
 
 
+def _auto_promote_admin(db: DbSession, user: models.User) -> None:
+    """If `user.email` is in ADMIN_EMAILS and they aren't admin yet, flip the
+    flag. Idempotent — once `is_admin=True`, the email check is skipped on
+    subsequent requests. Promote-only (never demote)."""
+    if user.is_admin or not _ADMIN_EMAILS:
+        return
+    if user.email.lower() in _ADMIN_EMAILS:
+        user.is_admin = True
+        try:
+            db.commit()
+        except SQLAlchemyError:
+            logger.exception("Failed to auto-promote admin for user id=%s", user.id)
+            db.rollback()
+
+
 def get_current_user(
     request: Request,
     db: DbSession = Depends(get_db),
@@ -184,6 +210,7 @@ def get_current_user(
     # rather than silently fall through to the cookie.
     bearer_user = _resolve_bearer_user(request, db)
     if bearer_user is not None:
+        _auto_promote_admin(db, bearer_user)
         return bearer_user
 
     if not session_token:
@@ -200,7 +227,27 @@ def get_current_user(
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
+    _auto_promote_admin(db, user)
     return user
+
+
+def require_admin(
+    current_user: models.User = Depends(get_current_user),
+) -> models.User:
+    """Dependency: gate an endpoint to admins only. 403 for non-admins.
+
+    Note: admin endpoints intentionally accept BOTH bearer and cookie auth.
+    Rationale: an admin running curl scripts to extract usage analytics from
+    a CI job is a reasonable use case, and the bearer token is already gated
+    to the user's own data + non-mutating /admin endpoints. If you add
+    destructive admin endpoints later (ban-user, force-delete-stack), consider
+    layering `require_session_auth` on top so the browser-only guarantee
+    still applies."""
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
+        )
+    return current_user
 
 
 def require_session_auth(request: Request) -> None:

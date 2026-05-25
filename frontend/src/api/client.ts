@@ -1,4 +1,6 @@
 import type {
+  AdminStats,
+  AdminUser,
   ApiToken,
   ApiTokenCreated,
   AuthUser,
@@ -189,4 +191,9 @@ export const api = {
 
   revokeApiToken: (id: number) =>
     request<void>(`/auth/tokens/${id}`, { method: "DELETE" }),
+
+  // ── Admin ──
+
+  getAdminStats: () => request<AdminStats>("/admin/stats"),
+  listAdminUsers: () => request<AdminUser[]>("/admin/users"),
 };

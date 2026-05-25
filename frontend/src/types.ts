@@ -110,6 +110,55 @@ export interface AuthUser {
   email: string;
   display_name: string | null;
   onboarded: boolean;
+  is_admin: boolean;
+}
+
+// ── Admin ──
+
+export interface AdminStats {
+  users: {
+    total: number;
+    active_last_7d: number;
+    active_last_30d: number;
+    admin_count: number;
+  };
+  tasks: {
+    total: number;
+    pending: number;
+    in_progress: number;
+    done: number;
+    cancelled: number;
+    completed_today: number;
+    completed_last_7d: number;
+  };
+  stacks: {
+    topic_total: number;
+    /** Map of kind → count. Keys are subset of StackKind minus "daily". */
+    by_kind: Partial<Record<Exclude<StackKind, "daily">, number>>;
+    public_count: number;
+  };
+  api_tokens: {
+    total: number;
+    used_last_7d: number;
+  };
+  recent_signups: {
+    id: number;
+    email: string;
+    display_name: string | null;
+    created_at: string;
+  }[];
+  generated_at: string;
+}
+
+export interface AdminUser {
+  id: number;
+  email: string;
+  display_name: string | null;
+  created_at: string;
+  is_admin: boolean;
+  onboarded_at: string | null;
+  task_count: number;
+  last_session_at: string | null;
 }
 
 export interface StackCounts {

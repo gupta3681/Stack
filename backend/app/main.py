@@ -6,7 +6,7 @@ from sqlalchemy import inspect, text
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from .database import Base, engine
-from .routers import auth, public, stacks, tasks
+from .routers import admin, auth, public, stacks, tasks
 from .security import enforce_csrf_header
 
 
@@ -212,6 +212,29 @@ def _migrate_rename_task_title_to_name() -> None:
             logging.exception("Failed to rename tasks.title → tasks.name")
 
 
+def _migrate_add_user_is_admin() -> None:
+    """Additive migration: users.is_admin BOOLEAN NOT NULL DEFAULT FALSE.
+
+    Existing rows default to non-admin. Promotion happens via ADMIN_EMAILS
+    env var at session resolve time — see auth.py `_auto_promote_admin`.
+    """
+    inspector = inspect(engine)
+    if "users" not in inspector.get_table_names():
+        return
+    columns = {c["name"] for c in inspector.get_columns("users")}
+    if "is_admin" in columns:
+        return
+    with engine.begin() as conn:
+        try:
+            conn.execute(
+                text(
+                    "ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT FALSE"
+                )
+            )
+        except (OperationalError, ProgrammingError):
+            pass
+
+
 def _migrate_add_user_onboarded_at() -> None:
     """Additive migration: users.onboarded_at — null on existing rows.
 
@@ -247,6 +270,7 @@ _migrate_add_task_context_columns()
 _migrate_add_stack_share_context_column()
 _migrate_add_task_estimate_column()
 _migrate_add_user_onboarded_at()
+_migrate_add_user_is_admin()
 
 
 app = FastAPI(title="Stack", version="0.2.0")
@@ -270,6 +294,7 @@ app.include_router(auth.router)
 app.include_router(stacks.router)
 app.include_router(tasks.router)
 app.include_router(public.router)
+app.include_router(admin.router)
 
 
 @app.get("/health")

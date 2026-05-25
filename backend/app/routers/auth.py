@@ -48,6 +48,7 @@ class UserOut(BaseModel):
     email: str
     display_name: str | None
     onboarded_at: datetime | None = None
+    is_admin: bool = False
 
     @computed_field
     @property

@@ -7,6 +7,7 @@ import { ProfileModal } from "./auth/ProfileModal";
 import { StackHeader } from "./components/StackHeader";
 import { QuickCapture } from "./components/QuickCapture";
 import { StackView } from "./components/StackView";
+import { AdminPanel } from "./components/AdminPanel";
 import { OverdueSection } from "./components/OverdueSection";
 import { OnboardingTips } from "./components/OnboardingTips";
 import { PublicStackView } from "./components/PublicStackView";
@@ -18,7 +19,8 @@ type View =
   | { kind: "today" }
   | { kind: "tomorrow" }
   | { kind: "stacks-list" }
-  | { kind: "stacks-detail"; stackId: number };
+  | { kind: "stacks-detail"; stackId: number }
+  | { kind: "admin" };
 
 function todayISO(): string {
   const d = new Date();
@@ -85,6 +87,15 @@ function AuthedApp() {
           >
             Stacks{navCount(counts?.topic_stacks)}
           </button>
+          {user?.is_admin && (
+            <button
+              type="button"
+              className={`nav-link${view.kind === "admin" ? " nav-link--active" : ""}`}
+              onClick={() => setView({ kind: "admin" })}
+            >
+              Admin
+            </button>
+          )}
           <span className="topbar__sep" aria-hidden>
             ·
           </span>
@@ -117,6 +128,8 @@ function AuthedApp() {
         <TopicStackList
           onOpen={(stackId) => setView({ kind: "stacks-detail", stackId })}
         />
+      ) : view.kind === "admin" ? (
+        <AdminPanel />
       ) : (
         <TopicStackView
           stackId={view.stackId}
