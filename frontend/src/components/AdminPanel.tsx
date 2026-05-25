@@ -216,7 +216,7 @@ export function AdminPanel() {
                   <th>Name</th>
                   <th className="admin__num">Tasks</th>
                   <th>Signed up</th>
-                  <th>Last session</th>
+                  <th>Last active</th>
                   <th>Admin</th>
                 </tr>
               </thead>

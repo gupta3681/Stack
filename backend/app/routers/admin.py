@@ -443,13 +443,24 @@ def admin_users(
     ).all()
     tasks_by_user: dict[int, int] = {uid: n for uid, n in task_rows}
 
-    # Last session per user. Same shape — one query, then index.
+    # Last activity per user — the best signal we have. Prefer
+    # last_seen_at (bumped on every authenticated cookie request) and
+    # fall back to created_at (which is always set on login) for users
+    # whose sessions predate the last_seen_at column. Computed in Python
+    # rather than via SQL GREATEST so we don't depend on Postgres-only
+    # functions that SQLite (used by the test suite) doesn't have.
     sess_rows = db.execute(
-        select(models.Session.user_id, func.max(models.Session.created_at)).group_by(
-            models.Session.user_id
-        )
+        select(
+            models.Session.user_id,
+            func.max(models.Session.created_at).label("last_login"),
+            func.max(models.Session.last_seen_at).label("last_seen"),
+        ).group_by(models.Session.user_id)
     ).all()
-    last_session_by_user: dict[int, datetime] = {uid: ts for uid, ts in sess_rows}
+    last_session_by_user: dict[int, datetime] = {}
+    for uid, last_login, last_seen in sess_rows:
+        candidates = [v for v in (last_login, last_seen) if v is not None]
+        if candidates:
+            last_session_by_user[uid] = max(candidates)
 
     return [
         AdminUser(
