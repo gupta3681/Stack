@@ -2,6 +2,15 @@ import { useState, type FormEvent } from "react";
 import { useAuth } from "./AuthContext";
 import { ApiError } from "../api/client";
 
+/**
+ * Sample one-liner copied by the "Copy starter curl" button under the
+ * hero lede. Picks the simplest meaningful call ("show me today's stack")
+ * so even a visitor who's never used the API can paste it into a terminal,
+ * swap YOUR_TOKEN, and see their own data come back.
+ */
+const STARTER_CURL = `curl https://stack-production-138b.up.railway.app/api/stacks/today \\
+  -H "Authorization: Bearer YOUR_TOKEN"`;
+
 type Mode = "signup" | "login";
 
 /**
@@ -22,6 +31,18 @@ export function LandingPage() {
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [curlCopied, setCurlCopied] = useState(false);
+
+  const copyStarterCurl = async () => {
+    try {
+      await navigator.clipboard.writeText(STARTER_CURL);
+      setCurlCopied(true);
+      setTimeout(() => setCurlCopied(false), 2000);
+    } catch {
+      // Clipboard unavailable on HTTP origins; quietly no-op. Curious
+      // visitors can still triple-click the lede or read the SKILL.md.
+    }
+  };
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -92,13 +113,22 @@ export function LandingPage() {
             find it.
           </p>
           <p className="landing__lede">
-            Already agent-readable: an API token lets your CLI or Claude
-            Code add tasks, pull from a topic stack into today, and mark
-            things done — same endpoints the web app calls. The deeper bet
-            is on what comes next: an agent that reads across your stacks
-            and proposes what should move where, based on what you're
-            focused on right now.
+            Stack plays nicely outside the app. Share any topic stack as a
+            public link in one click — no login needed for visitors. Or
+            hand your stack to an agent: Claude Code can add tasks, pull
+            from a topic stack into today, and mark things done on your
+            behalf. The deeper bet is on what comes next: an agent that
+            reads across your stacks and proposes what should move where,
+            based on what you're focused on right now.
           </p>
+          <button
+            type="button"
+            className="landing__copy-curl"
+            onClick={copyStarterCurl}
+            aria-label="Copy a starter command that shows your stack from the terminal"
+          >
+            {curlCopied ? "Copied ✓" : "Copy starter command"}
+          </button>
         </div>
 
         <aside className="landing__hero-auth" aria-label="Get started">
