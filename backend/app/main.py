@@ -212,6 +212,28 @@ def _migrate_rename_task_title_to_name() -> None:
             logging.exception("Failed to rename tasks.title → tasks.name")
 
 
+def _migrate_add_session_last_seen_at() -> None:
+    """Additive migration: sessions.last_seen_at TIMESTAMP, nullable.
+
+    Existing rows get NULL — they'll be treated as "no recent activity
+    recorded" by the admin active-user metrics until the user's next
+    authenticated request bumps the column.
+    """
+    inspector = inspect(engine)
+    if "sessions" not in inspector.get_table_names():
+        return
+    columns = {c["name"] for c in inspector.get_columns("sessions")}
+    if "last_seen_at" in columns:
+        return
+    with engine.begin() as conn:
+        try:
+            conn.execute(
+                text("ALTER TABLE sessions ADD COLUMN last_seen_at TIMESTAMP")
+            )
+        except (OperationalError, ProgrammingError):
+            pass
+
+
 def _migrate_add_user_is_admin() -> None:
     """Additive migration: users.is_admin BOOLEAN NOT NULL DEFAULT FALSE.
 
@@ -271,6 +293,7 @@ _migrate_add_stack_share_context_column()
 _migrate_add_task_estimate_column()
 _migrate_add_user_onboarded_at()
 _migrate_add_user_is_admin()
+_migrate_add_session_last_seen_at()
 
 
 app = FastAPI(title="Stack", version="0.2.0")

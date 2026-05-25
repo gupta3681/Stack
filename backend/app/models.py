@@ -73,6 +73,11 @@ class Session(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     expires_at: Mapped[datetime] = mapped_column(DateTime)
     user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Bumped each time `get_current_user` resolves this session (throttled
+    # to once a minute per session to avoid write amplification under
+    # polling). Powers "active in last N days" admin metrics — meaningfully
+    # better signal than `created_at` which only updates on login events.
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class Feedback(Base):

@@ -194,6 +194,83 @@ def test_non_admin_bearer_token_gets_403(auth_client: TestClient):
     assert r.status_code == 403
 
 
+def test_active_metric_uses_last_seen_at_not_just_login(auth_client: TestClient):
+    """If a user logged in long ago but kept using the app, the 'active 7d'
+    counter should include them. Before the last_seen_at change it was
+    only ever counting recent login events, missing continuously-active
+    cookie users."""
+    _make_admin(auth_client, "aryan@example.com")
+
+    # The signup created a session; the /admin/stats call we're about to
+    # make will resolve it and bump last_seen_at to ~now. To simulate the
+    # interesting case, force the session.created_at way into the past
+    # so the OLD metric (created_at-based) would have returned 0.
+    from datetime import datetime, timedelta
+
+    from app import database as db_module
+    from app import models
+    from app.main import app
+
+    override = app.dependency_overrides[db_module.get_db]
+    sess_db = next(override())
+    try:
+        sess = sess_db.query(models.Session).first()
+        sess.created_at = datetime.utcnow() - timedelta(days=100)
+        sess_db.commit()
+    finally:
+        sess_db.close()
+
+    # Resolving the session here bumps last_seen_at to ~now.
+    r = auth_client.get("/admin/stats")
+    body = r.json()
+    # The user "logged in 100 days ago" but was active today — counts.
+    assert body["users"]["active_last_7d"] == 1
+    assert body["users"]["active_last_30d"] == 1
+
+
+def test_active_metric_excludes_stale_sessions(auth_client: TestClient):
+    """A session whose last_seen_at is older than the window should not
+    count, even though the user row still exists.
+
+    Tricky to assert because /admin/stats itself goes through
+    get_current_user which BUMPS last_seen_at. Bearer auth doesn't touch
+    sessions, so we mint a token UP FRONT (the last cookie request to
+    auth_client) and read /admin/stats via a separate bare client. Then
+    force last_seen_at backward and the bare/bearer GET observes it
+    untouched.
+    """
+    _make_admin(auth_client, "aryan@example.com")
+    # Mint token first — this is the last cookie call that'll bump
+    # last_seen_at via auth_client.
+    tok = auth_client.post("/auth/tokens", json={"name": "cli"}).json()["token"]
+
+    # Now park last_seen_at outside both windows.
+    from datetime import datetime, timedelta
+
+    from app import database as db_module
+    from app import models
+    from app.main import app
+
+    override = app.dependency_overrides[db_module.get_db]
+    sess_db = next(override())
+    try:
+        sess = sess_db.query(models.Session).first()
+        sess.last_seen_at = datetime.utcnow() - timedelta(days=45)
+        sess_db.commit()
+    finally:
+        sess_db.close()
+
+    # Bearer path skips the session-bump, so the stale value persists
+    # through this admin read.
+    bare = TestClient(app)
+    r = bare.get(
+        "/admin/stats", headers={"Authorization": f"Bearer {tok}"}
+    )
+    body = r.json()
+    assert body["users"]["active_last_7d"] == 0
+    assert body["users"]["active_last_30d"] == 0
+
+
 def test_schema_endpoint_returns_introspection(auth_client):
     """The /admin/schema endpoint reflects the actual SQLAlchemy models.
     If this test breaks because a column was renamed or a table was added,

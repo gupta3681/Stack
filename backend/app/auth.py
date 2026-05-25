@@ -20,6 +20,12 @@ logger = logging.getLogger(__name__)
 
 SESSION_COOKIE_NAME = "stack_session"
 SESSION_TTL = timedelta(days=30)
+# `sessions.last_seen_at` is bumped at most once per minute per session.
+# Without this throttle, every authenticated request from a single tab
+# (React Query polling, mutations, etc.) would queue an UPDATE on the
+# same row, creating needless write churn. A minute of granularity is
+# plenty for "active in last 7 days"-style metrics.
+SESSION_LAST_SEEN_THROTTLE = timedelta(seconds=60)
 API_TOKEN_PREFIX = "stk_"
 # urlsafe(32) → 43 chars; full token = "stk_" + 43 chars = 47 chars.
 # Showing the first 12 chars (4 prefix + 8 random) is enough to disambiguate
@@ -226,6 +232,23 @@ def get_current_user(
     user = db.get(models.User, session.user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+    # Bump last_seen_at on the resolved session so admin "Active 7d/30d"
+    # metrics reflect actual usage, not just login events. Throttled to
+    # 1/min per session — see SESSION_LAST_SEEN_THROTTLE rationale.
+    now = _now()
+    if (
+        session.last_seen_at is None
+        or (now - session.last_seen_at) > SESSION_LAST_SEEN_THROTTLE
+    ):
+        try:
+            session.last_seen_at = now
+            db.commit()
+        except SQLAlchemyError:
+            logger.exception(
+                "Failed to bump last_seen_at for session id=%s", session.id
+            )
+            db.rollback()
 
     _auto_promote_admin(db, user)
     return user

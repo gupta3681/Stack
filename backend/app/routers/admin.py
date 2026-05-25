@@ -202,13 +202,16 @@ def admin_stats(
         ).scalar()
         or 0
     )
-    # "Active in last N days" = distinct user_ids with a session created in
-    # that window. Sessions expire after 30d so this is bounded; using
-    # created_at not expires_at because that's the actual login event.
+    # "Active in last N days" = distinct user_ids whose session was actually
+    # resolved by `get_current_user` in that window. We bump
+    # `session.last_seen_at` on every authenticated request (throttled to
+    # 1/min per session), so this counts real activity, not just login
+    # events. NULL last_seen_at rows (pre-migration sessions never used
+    # again) are naturally excluded by the `>=` filter.
     active_7d = (
         db.execute(
             select(func.count(func.distinct(models.Session.user_id))).where(
-                models.Session.created_at >= cutoff_7d
+                models.Session.last_seen_at >= cutoff_7d
             )
         ).scalar()
         or 0
@@ -216,7 +219,7 @@ def admin_stats(
     active_30d = (
         db.execute(
             select(func.count(func.distinct(models.Session.user_id))).where(
-                models.Session.created_at >= cutoff_30d
+                models.Session.last_seen_at >= cutoff_30d
             )
         ).scalar()
         or 0
