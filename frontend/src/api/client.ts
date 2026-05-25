@@ -1,4 +1,6 @@
 import type {
+  ApiToken,
+  ApiTokenCreated,
   AuthUser,
   CreateTaskInput,
   CreateTopicStackInput,
@@ -174,4 +176,17 @@ export const api = {
 
   completeOnboarding: () =>
     request<AuthUser>("/auth/me/onboarded", { method: "POST" }),
+
+  // ── API tokens ──
+
+  listApiTokens: () => request<ApiToken[]>("/auth/tokens"),
+
+  createApiToken: (name: string) =>
+    request<ApiTokenCreated>("/auth/tokens", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
+
+  revokeApiToken: (id: number) =>
+    request<void>(`/auth/tokens/${id}`, { method: "DELETE" }),
 };

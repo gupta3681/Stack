@@ -1,14 +1,18 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session as DbSession
 
 from .. import auth as auth_service
 from .. import models
 from ..database import get_db
-from ..security import check_login_rate_limit, check_signup_rate_limit
+from ..security import (
+    check_login_rate_limit,
+    check_signup_rate_limit,
+    extract_bearer_token,
+)
 
 
 def _now() -> datetime:
@@ -106,6 +110,7 @@ def login(
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 def logout(
+    request: Request,
     response: Response,
     db: DbSession = Depends(get_db),
     session_token: str | None = Cookie(default=None, alias=auth_service.SESSION_COOKIE_NAME),
@@ -113,6 +118,12 @@ def logout(
     if session_token:
         auth_service.revoke_session(db, session_token)
     auth_service.clear_session_cookie(response)
+    # If the caller used bearer auth (CLI / agent / skill), revoke that token
+    # too — "log me out" should actually invalidate the credential, not just
+    # express intent. Idempotent: no error if the token is already gone.
+    raw_bearer = extract_bearer_token(request)
+    if raw_bearer:
+        auth_service.revoke_bearer_token(db, raw_bearer)
 
 
 @router.get("/me", response_model=UserOut)
@@ -137,7 +148,15 @@ def update_profile(
     return current_user
 
 
-@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/change-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    # Session-only: runs BEFORE get_current_user so a bearer-authed attempt
+    # is 403'd without bumping last_used_at on the token. Otherwise a leaked
+    # token probing /change-password would mark itself "recently used,"
+    # masking the abuse signal in the Tokens list.
+    dependencies=[Depends(auth_service.require_session_auth)],
+)
 def change_password(
     payload: ChangePasswordRequest,
     db: DbSession = Depends(get_db),
@@ -172,3 +191,109 @@ def complete_onboarding(
         db.commit()
         db.refresh(current_user)
     return current_user
+
+
+# ── API tokens ────────────────────────────────────────────────────────────────
+#
+# Long-lived bearer tokens for programmatic access (CLIs, agents, Claude
+# Code skill files). All token management is session-only — an existing API
+# token can't mint or revoke other tokens. That keeps a leaked token to a
+# bounded blast radius: data access, no permanent account takeover.
+
+
+class ApiTokenCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+
+    @field_validator("name")
+    @classmethod
+    def _name_not_blank(cls, v: str) -> str:
+        # Pydantic's min_length runs on the raw input; a whitespace-only
+        # string ("   ") passes min_length=1 but strips to empty in the
+        # endpoint. Reject post-strip so we never store blank names.
+        stripped = v.strip()
+        if not stripped:
+            raise ValueError("Token name cannot be blank")
+        return stripped
+
+
+class ApiTokenOut(BaseModel):
+    """Public view of a token — NEVER includes the raw secret."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    prefix: str
+    created_at: datetime
+    last_used_at: datetime | None
+
+
+class ApiTokenCreated(ApiTokenOut):
+    """One-time response on creation. Contains the raw token — shown once,
+    never recoverable. The frontend must surface a copy-to-clipboard flow.
+    """
+
+    token: str
+
+
+@router.post(
+    "/tokens",
+    response_model=ApiTokenCreated,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(auth_service.require_session_auth)],
+)
+def create_api_token(
+    payload: ApiTokenCreate,
+    db: DbSession = Depends(get_db),
+    current_user: models.User = Depends(auth_service.get_current_user),
+):
+    # Validator already stripped + rejected blanks.
+    row, raw = auth_service.issue_api_token(db, current_user, payload.name)
+    return ApiTokenCreated(
+        id=row.id,
+        name=row.name,
+        prefix=row.prefix,
+        created_at=row.created_at,
+        last_used_at=row.last_used_at,
+        token=raw,
+    )
+
+
+@router.get(
+    "/tokens",
+    response_model=list[ApiTokenOut],
+    dependencies=[Depends(auth_service.require_session_auth)],
+)
+def list_api_tokens(
+    db: DbSession = Depends(get_db),
+    current_user: models.User = Depends(auth_service.get_current_user),
+):
+    rows = (
+        db.execute(
+            select(models.ApiToken)
+            .where(models.ApiToken.user_id == current_user.id)
+            .order_by(models.ApiToken.created_at.desc())
+        )
+        .scalars()
+        .all()
+    )
+    return rows
+
+
+@router.delete(
+    "/tokens/{token_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(auth_service.require_session_auth)],
+)
+def revoke_api_token(
+    token_id: int,
+    db: DbSession = Depends(get_db),
+    current_user: models.User = Depends(auth_service.get_current_user),
+):
+    row = db.get(models.ApiToken, token_id)
+    # 404 (not 403) for foreign tokens — don't leak existence of other
+    # users' token IDs.
+    if row is None or row.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Token not found")
+    db.delete(row)
+    db.commit()

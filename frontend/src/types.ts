@@ -126,3 +126,18 @@ export interface LoginInput {
 export interface SignupInput extends LoginInput {
   display_name?: string | null;
 }
+
+/** Bearer-auth token for CLIs / agents / the Claude Code skill file.
+ * `token` field is ONLY present in the one-time create response — the list
+ * endpoint never returns it. */
+export interface ApiToken {
+  id: number;
+  name: string;
+  prefix: string;
+  created_at: string;
+  last_used_at: string | null;
+}
+
+export interface ApiTokenCreated extends ApiToken {
+  token: string;
+}

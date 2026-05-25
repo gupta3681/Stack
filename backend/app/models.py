@@ -67,6 +67,36 @@ class Session(Base):
     user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
+class ApiToken(Base):
+    """Long-lived bearer token for programmatic access (CLIs, agents, MCP).
+
+    The raw token is shown to the user exactly once at creation; we store only
+    a SHA-256 digest, so a DB leak can't be turned into account takeover. Each
+    token has a human-given name (e.g. "laptop", "claude-code") and a public
+    prefix shown in the UI to disambiguate without revealing the secret.
+
+    No expiration by default — these are PATs, revoked explicitly from the
+    Profile UI. last_used_at lets the user spot dormant tokens to clean up.
+    """
+
+    __tablename__ = "api_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    # User-given label. Not unique — "laptop" twice is fine; the prefix
+    # disambiguates them in the UI.
+    name: Mapped[str] = mapped_column(String(100))
+    # SHA-256 hex of the raw token. Unique so lookup is a single PK-ish hit.
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    # First 12 chars of the raw token (e.g. "stk_abc12345"). Shown in the list
+    # view so users can tell tokens apart without revealing the secret.
+    prefix: Mapped[str] = mapped_column(String(16))
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
 class Stack(Base):
     __tablename__ = "stacks"
     # Uniqueness only matters for daily stacks (one per user per date). For

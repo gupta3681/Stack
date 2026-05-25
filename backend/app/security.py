@@ -12,9 +12,24 @@ from starlette.responses import JSONResponse, Response
 
 CSRF_HEADER_NAME = "x-stack-csrf"
 CSRF_HEADER_VALUE = "1"
+BEARER_PREFIX = "bearer "  # case-insensitive prefix; exactly one literal space
 
 _SAFE_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}
 _rate_buckets: dict[str, deque[float]] = defaultdict(deque)
+
+
+def extract_bearer_token(request: Request) -> str | None:
+    """Parse `Authorization: Bearer <token>` from the request.
+
+    Returns the raw token (whitespace stripped) if present, None if the
+    header is absent or doesn't carry a bearer scheme. Used by BOTH
+    `enforce_csrf_header` (to decide CSRF exemption) and the auth path
+    (to authenticate) — single source of truth so the two layers can't drift.
+    """
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.lower().startswith(BEARER_PREFIX):
+        return None
+    return auth_header[len(BEARER_PREFIX) :].strip()
 
 
 def _env_int(name: str, default: int) -> int:
@@ -61,8 +76,17 @@ def _client_ip(request: Request) -> str:
 async def enforce_csrf_header(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
-    """Require a same-origin-only custom header on unsafe requests."""
+    """Require a same-origin-only custom header on unsafe requests.
+
+    CSRF defends against cross-site form posts that ride the user's cookie.
+    Bearer-token requests are exempt: a malicious site can't set the
+    `Authorization` header on a form post (it's not on the CORS safelist), so
+    no cookie-style forgery is possible against bearer-authed endpoints.
+    Requiring CSRF on bearer requests would just break every CLI/agent client.
+    """
     if request.method.upper() not in _SAFE_METHODS:
+        if extract_bearer_token(request) is not None:
+            return await call_next(request)
         if request.headers.get(CSRF_HEADER_NAME) != CSRF_HEADER_VALUE:
             return JSONResponse(
                 {"detail": "Missing CSRF header"},

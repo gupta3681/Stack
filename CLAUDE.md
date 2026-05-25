@@ -46,8 +46,9 @@ Stack's core moves:
 - ✅ Move tasks between stacks (e.g. pull from a topic stack into Today)
 - ✅ Quick-capture with priority hints
 - ✅ Edit modal (name, direct_link, description, context_md markdown editor with bidirectional frontmatter sync + preview tab, due date, priority hint)
-- ✅ Profile modal (display name + change password with current-pw verification)
+- ✅ Profile modal (display name + change password with current-pw verification + API token management)
 - ✅ Confirm-password field on signup
+- ✅ Bearer-token API access (per-user PATs, `stk_…`) for CLIs / agents / Claude Code skill file at [.claude/skills/stack/SKILL.md](.claude/skills/stack/SKILL.md)
 - ✅ Task counts in topbar nav (`Today (3)`, `Tomorrow (5)`, `Stacks (4)`)
 - ✅ First-run onboarding tips card (no library tour — dismissable Mono card)
 - ✅ Shareable topic stacks via random slug, read-only public viewer at `/s/<slug>`
@@ -112,6 +113,9 @@ We don't have a separate service layer or message bus. FastAPI routers call SQLA
        │
        ├──── N ────► sessions  (id PK = SHA-256 token digest, user_id, expires_at)
        │
+       ├──── N ────► api_tokens (id, user_id, name, token_hash UNIQUE,
+       │                         prefix, created_at, last_used_at NULL)
+       │
        ├──── N ────► stacks    (id, user_id, kind, stack_date NULL, name NULL,
        │                        intention NULL)
        │                       UNIQUE (user_id, stack_date)
@@ -129,7 +133,8 @@ Key shape rules:
 - **`Task.user_id`** is denormalized (also reachable via `task.stack.user_id`) — backlog tasks have `stack_id=NULL` so they need it directly, and it's a safety belt.
 - **`Task.position`** is per-stack, 0 = top.
 - **`Task.in_progress_started_at` + `accumulated_seconds`** = live timer. The frontend ticks every second; the backend commits elapsed time on pause/done. Never stores live time.
-- **Cascade**: deleting a user cascades to sessions/stacks/tasks. SQLite needs `PRAGMA foreign_keys = ON` (enabled in [database.py](backend/app/database.py)) for this to actually fire.
+- **`ApiToken.token_hash`** stores only the SHA-256 of the raw token. The raw value is shown to the user exactly once at creation. `prefix` is the first 12 chars of the raw token (e.g. `stk_abc12345`) — surfaced in the list view so users can tell tokens apart without leaking the secret.
+- **Cascade**: deleting a user cascades to sessions/stacks/tasks/api_tokens. SQLite needs `PRAGMA foreign_keys = ON` (enabled in [database.py](backend/app/database.py)) for this to actually fire.
 
 ### NOT in the model (yet)
 
@@ -146,7 +151,9 @@ Key shape rules:
 - **Session tokens are hashed at rest.** The browser cookie holds the raw random token; `sessions.id` stores only its SHA-256 digest.
 - **`HttpOnly` cookie, `SameSite=Lax`, `path=/`.** `Secure` defaults to true when `APP_ENV=production`; it can still be forced with `COOKIE_SECURE`.
 - **Every endpoint** that touches user data uses `Depends(get_current_user)`. Stack/task queries filter by `current_user.id`. Direct task lookups go through `_get_owned_task` which returns 404 (not 403) for foreign tasks to avoid leaking existence.
-- **CSRF defense:** every unsafe request requires `X-Stack-CSRF: 1`; the frontend API client adds it globally. This blocks cross-site form POSTs from using the session cookie.
+- **Bearer-token auth for programmatic clients** (CLIs, agents, Claude Code skill file). `get_current_user` checks `Authorization: Bearer <stk_…>` *before* the session cookie. Tokens are minted from the Profile modal, stored as SHA-256 digest, never expire, revocable. **Bearer-authed requests bypass the CSRF header** — cross-site forms can't set `Authorization`, so the CSRF threat model doesn't apply.
+- **Session-only endpoints.** A bearer token can NOT change password or mint/revoke other tokens (`require_session_auth` guard). This caps the blast radius of a leaked token: data access, never permanent account takeover.
+- **CSRF defense:** every unsafe request requires `X-Stack-CSRF: 1`; the frontend API client adds it globally. This blocks cross-site form POSTs from using the session cookie. (Bearer requests are exempt — see above.)
 - **Auth rate limiting:** login/signup have a small in-process sliding-window limiter. The production nginx config also rate-limits login/signup at the proxy.
 - **Public-read rate limiting:** `/public/stacks/{slug}` is throttled per IP (defaults 60/min). Defends against scrape/enumeration of shared content. Tunable via `PUBLIC_READ_RATE_LIMIT_IP_ATTEMPTS` and `PUBLIC_READ_RATE_LIMIT_WINDOW_SECONDS`.
 - **Client-IP resolution (`_client_ip()`):** strategy chain, first match wins:
@@ -159,11 +166,34 @@ The limiter is per process/Machine, not a distributed quota. If this gets real t
 
 ---
 
+## Programmatic access (CLIs, agents, Claude Code)
+
+Stack ships a [skill file at `.claude/skills/stack/SKILL.md`](.claude/skills/stack/SKILL.md) so any Claude Code user can call the REST API. Setup is two steps per user:
+
+1. **Mint a token.** Profile modal → API tokens → name it (e.g. `claude-code`) → Generate → copy. The raw token (`stk_…`) is shown exactly once.
+2. **Set env vars** (e.g. in `~/.zshrc`):
+   ```bash
+   export STACK_API_BASE="https://stack.example.com"
+   export STACK_API_TOKEN="stk_…"
+   ```
+
+Then the skill's curl recipes (add to today, complete, move, list topics, share) "just work." Bearer-authed requests bypass the browser's `X-Stack-CSRF` header by design — see Auth note above.
+
+The skill file lives in the repo so updates ship with the code. A user who wants it Claude-Code-wide can symlink:
+```bash
+ln -s "$(pwd)/.claude/skills/stack" ~/.claude/skills/stack
+```
+
+The same backend would also serve an MCP server later (since MCP is just another transport over the same endpoints + same bearer auth), but we haven't built that. Skill file is sufficient for now.
+
+---
+
 ## Project structure
 
 ```
 Stack/
 ├── CLAUDE.md                ← you are here
+├── .claude/skills/stack/    ← skill file for Claude Code users (REST recipes)
 ├── Dockerfile               ← single-image production target: React + nginx + FastAPI
 ├── design.md                ← Mono design system reference
 ├── docker-compose.yml       ← dev: db + backend (Postgres) + frontend (Vite)
@@ -180,12 +210,12 @@ Stack/
 │   │   ├── database.py      ← engine + session factory (DATABASE_URL aware)
 │   │   ├── models.py        ← SQLAlchemy: User, Session, Stack, Task
 │   │   ├── schemas.py       ← Pydantic request/response models
-│   │   ├── auth.py          ← password hashing, session mgmt, get_current_user
+│   │   ├── auth.py          ← password hashing, session mgmt, bearer-token mgmt, get_current_user
 │   │   └── routers/
-│   │       ├── auth.py      ← /auth/{signup,login,logout,me,change-password,me/onboarded}
+│   │       ├── auth.py      ← /auth/{signup,login,logout,me,change-password,me/onboarded,tokens}
 │   │       ├── stacks.py    ← /stacks/{today,tomorrow,overdue,counts,{date},topics,...}
 │   │       └── tasks.py     ← /tasks/{...} CRUD + move/reorder/start/pause
-│   └── tests/               ← pytest suite (45 tests)
+│   └── tests/               ← pytest suite (114 tests)
 │       ├── conftest.py      ← in-memory SQLite fixtures
 │       ├── test_auth.py
 │       ├── test_stacks.py
@@ -273,7 +303,7 @@ The root [Dockerfile](Dockerfile) builds the React app, writes the production ng
 cd backend && uv run pytest
 ```
 
-Each test gets a fresh in-memory SQLite database via [conftest.py](backend/tests/conftest.py). The `client` fixture is a TestClient with the `get_db` dependency overridden. The `auth_client` fixture is the same but already signed up as `aryan@example.com`. The `second_client` is a separate TestClient (own cookie jar) signed up as `other@example.com` — used for multi-tenant isolation tests. Current suite size: 48 tests.
+Each test gets a fresh in-memory SQLite database via [conftest.py](backend/tests/conftest.py). The `client` fixture is a TestClient with the `get_db` dependency overridden. The `auth_client` fixture is the same but already signed up as `aryan@example.com`. The `second_client` is a separate TestClient (own cookie jar) signed up as `other@example.com` — used for multi-tenant isolation tests. Current suite size: 114 tests.
 
 When adding new endpoints or behaviors, add a test in the matching `test_*.py` file. The suite runs in ~12s and is the cheapest possible regression net.
 
@@ -310,6 +340,10 @@ If you're tempted to add a color or rounded corner, stop. The whole product's vi
 21. **`Task.title` was renamed to `Task.name`.** Both Postgres and SQLite (3.25+) support `ALTER TABLE … RENAME COLUMN`, so this was a real rename (not a deprecation). The migration in [main.py `_migrate_rename_task_title_to_name`](backend/app/main.py) runs **before** `Base.metadata.create_all` so existing DBs rename in place and fresh DBs get `name` directly. The API payload key, Pydantic field, frontend types, and the modal label all use `name` now — there is no `title` left anywhere. If you find one in a future PR, it's a bug.
 
 22. **Bidirectional frontmatter ↔ inputs in TaskEditModal.** The modal's Name/Direct link/Description inputs are derived views over `context_md`'s frontmatter — typing in an input rewrites the YAML block; editing the YAML updates the inputs. The shared parser/serializer lives in [`frontend/src/lib/markdown.ts`](frontend/src/lib/markdown.ts) and uses a leading-one-whitespace strip (not `.trim()`) so spaces typed inside input fields don't get eaten on round-trip. Unknown frontmatter keys (e.g. `tags:`) are preserved.
+
+23. **Bearer auth wins over the session cookie in `get_current_user`.** If both are present we use the bearer. A request with a stale cookie + valid bearer goes through; the reverse also works. Important: **`enforce_csrf_header` ALSO checks for bearer first** — bearer-authed unsafe requests skip the CSRF header requirement. Cross-site forms can't set `Authorization` (not on the CORS safelist), so the CSRF threat model genuinely doesn't apply to them. If you add a new transport (basic auth, OAuth) that also bypasses the cookie, mirror the same exemption pattern.
+
+24. **Session-only endpoints reject bearer with 403.** `change_password`, `create_api_token`, `list_api_tokens`, `revoke_api_token` all call `auth_service.require_session_auth(request)` as their first line. A leaked API token must NOT be able to mint sibling tokens, revoke existing tokens, or change the password — that's the difference between "they have access to my data until I notice" and "they own the account forever." If you add another endpoint where bearer access would be dangerous (account deletion, billing, etc.), add this same guard.
 
 2. **Cache clear on logout** ([AuthContext.tsx:64](frontend/src/auth/AuthContext.tsx:64)). React Query keys are not user-scoped, so we **must** call `qc.clear()` on logout to prevent the next user's data view from briefly showing the previous user's cached data. If you add new queries, this is the safety net.
 
