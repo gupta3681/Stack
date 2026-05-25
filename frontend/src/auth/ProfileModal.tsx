@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, api } from "../api/client";
-import type { ApiTokenCreated } from "../types";
+import { ConfirmModal } from "../components/ConfirmModal";
+import type { ApiToken, ApiTokenCreated } from "../types";
 import { useAuth } from "./AuthContext";
 
 interface Props {
@@ -53,6 +54,8 @@ export function ProfileModal({ open, onClose }: Props) {
   const [revokeError, setRevokeError] = useState<string | null>(null);
   const [justCreated, setJustCreated] = useState<ApiTokenCreated | null>(null);
   const [copyNote, setCopyNote] = useState<string | null>(null);
+  // Holds the token row pending revoke confirmation. Null = no dialog open.
+  const [pendingRevoke, setPendingRevoke] = useState<ApiToken | null>(null);
 
   // Modal-open reset: ONLY depend on `open`. If we also depended on `user` or
   // `onClose`, a parent re-render (counts refetch, sibling state change)
@@ -74,6 +77,7 @@ export function ProfileModal({ open, onClose }: Props) {
     setRevokeError(null);
     setJustCreated(null);
     setCopyNote(null);
+    setPendingRevoke(null);
     const t = setTimeout(() => {
       dialogRef.current
         ?.querySelector<HTMLInputElement>(".profile__display-name-input")
@@ -452,14 +456,8 @@ export function ProfileModal({ open, onClose }: Props) {
                       type="button"
                       className="token__revoke"
                       onClick={() => {
-                        if (
-                          window.confirm(
-                            `Revoke "${t.name}"? Any client using it will stop working.`
-                          )
-                        ) {
-                          setRevokeError(null);
-                          revokeToken.mutate(t.id);
-                        }
+                        setRevokeError(null);
+                        setPendingRevoke(t);
                       }}
                       disabled={rowRevoking}
                     >
@@ -471,6 +469,32 @@ export function ProfileModal({ open, onClose }: Props) {
             </ul>
           </div>
         )}
+
+        <ConfirmModal
+          open={pendingRevoke !== null}
+          title="Revoke token"
+          message={
+            pendingRevoke ? (
+              <>
+                Revoke <strong>"{pendingRevoke.name}"</strong>? Any client
+                using this token will stop working immediately.
+              </>
+            ) : null
+          }
+          confirmLabel="Revoke"
+          destructive
+          pending={
+            revokeToken.isPending &&
+            revokeToken.variables === pendingRevoke?.id
+          }
+          onCancel={() => setPendingRevoke(null)}
+          onConfirm={() => {
+            if (!pendingRevoke) return;
+            revokeToken.mutate(pendingRevoke.id, {
+              onSettled: () => setPendingRevoke(null),
+            });
+          }}
+        />
       </div>
     </div>
   );

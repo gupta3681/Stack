@@ -105,6 +105,10 @@ export function StackView({ tasks, stackRef, moveTarget }: Props) {
               task={task}
               positionIndex={idx}
               moveTarget={moveTarget}
+              // Push-to-stack only makes sense FROM a daily stack. On a
+              // topic stack the existing → TODAY button already covers the
+              // topic→daily direction.
+              canPushToStack={!!stackRef.stackDate}
             />
           ))}
         </ul>

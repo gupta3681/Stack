@@ -7,12 +7,19 @@ import { useInvalidateStacks } from "../hooks/useInvalidateStacks";
 import { formatMinutes } from "../lib/format";
 import { safeHref } from "../lib/url";
 import type { Task } from "../types";
+import { ConfirmModal } from "./ConfirmModal";
+import { PushToStackModal } from "./PushToStackModal";
 import { TaskEditModal } from "./TaskEditModal";
 
 interface Props {
   task: Task;
   positionIndex: number;
   moveTarget: { date: string; label: string } | null;
+  /** True when the task lives in a daily stack — enables the "↪ Stack"
+   * button that sends it into a topic stack (e.g. back to "Books 2026"
+   * if it was pulled from there earlier). On topic-stack views this is
+   * false; the existing → TODAY button covers that direction. */
+  canPushToStack?: boolean;
 }
 
 function prominenceClass(idx: number): string {
@@ -66,7 +73,7 @@ function dueDateChip(due: string | null): string | null {
   return `DUE ${d.toLocaleDateString("en-US", { month: "short", day: "numeric" }).toUpperCase()}`;
 }
 
-export function TaskCard({ task, positionIndex, moveTarget }: Props) {
+export function TaskCard({ task, positionIndex, moveTarget, canPushToStack = false }: Props) {
   const invalidateStacks = useInvalidateStacks();
   const {
     attributes,
@@ -78,6 +85,8 @@ export function TaskCard({ task, positionIndex, moveTarget }: Props) {
   } = useSortable({ id: task.id });
 
   const [editing, setEditing] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [pushingToStack, setPushingToStack] = useState(false);
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -225,6 +234,17 @@ export function TaskCard({ task, positionIndex, moveTarget }: Props) {
               → {moveTarget.label}
             </button>
           )}
+          {canPushToStack && (
+            <button
+              type="button"
+              className="task__icon task__icon--text"
+              aria-label="Push to a topic stack"
+              title="Push to a topic stack"
+              onClick={() => setPushingToStack(true)}
+            >
+              ↪ STACK
+            </button>
+          )}
           <button
             type="button"
             className={`task__check${isDone ? " task__check--checked" : ""}`}
@@ -244,7 +264,7 @@ export function TaskCard({ task, positionIndex, moveTarget }: Props) {
             type="button"
             className="task__x"
             aria-label="Delete task"
-            onClick={() => remove.mutate()}
+            onClick={() => setConfirmingDelete(true)}
             disabled={remove.isPending}
           >
             ×
@@ -253,6 +273,31 @@ export function TaskCard({ task, positionIndex, moveTarget }: Props) {
       </li>
 
       <TaskEditModal task={task} open={editing} onClose={() => setEditing(false)} />
+      <PushToStackModal
+        open={pushingToStack}
+        taskId={task.id}
+        taskName={task.name}
+        onClose={() => setPushingToStack(false)}
+      />
+      <ConfirmModal
+        open={confirmingDelete}
+        title="Delete task"
+        message={
+          <>
+            Delete <strong>"{task.name}"</strong>? This permanently removes
+            it — it can't be undone.
+          </>
+        }
+        confirmLabel="Delete"
+        destructive
+        pending={remove.isPending}
+        onCancel={() => setConfirmingDelete(false)}
+        onConfirm={() =>
+          remove.mutate(undefined, {
+            onSuccess: () => setConfirmingDelete(false),
+          })
+        }
+      />
     </>
   );
 }

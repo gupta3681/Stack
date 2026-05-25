@@ -299,6 +299,35 @@ textarea:focus {
   gap: 12px;
 }
 
+/* Let the input absorb the row so the Pull button anchors to the right. */
+.qc__input {
+  flex: 1;
+}
+
+/* Secondary capture action: pull an existing task from a topic stack into
+ * this daily stack. Sits next to + Add so the two intents — "add new" /
+ * "pull existing" — are read as siblings. Restrained (50% opacity at rest)
+ * so it doesn't compete with the primary + Add. */
+.qc__pull {
+  font-family: var(--font-cond);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  line-height: 1;
+  opacity: 0.55;
+  white-space: nowrap;
+  transition: opacity 0.08s ease-out;
+}
+.qc__pull:hover {
+  background: transparent;
+  opacity: 1;
+}
+
 .qc__plus {
   font-family: var(--font-cond);
   font-size: 14px;
@@ -606,6 +635,120 @@ textarea:focus {
   max-width: 560px;
   max-height: calc(100vh - 48px);
   overflow-y: auto;
+}
+
+/* Confirm dialog — narrower than a full edit modal, fits a one-line
+ * question + Cancel/Confirm row without visual ceremony. */
+.modal--confirm {
+  max-width: 440px;
+}
+
+/* Pull-from-stack modal — wider, scrollable, can list lots of tasks. */
+.modal--pull {
+  max-width: 640px;
+}
+
+/* Pull modal contents */
+.modal__form.pull {
+  gap: 18px;
+}
+.pull__empty {
+  font-family: var(--font-cond);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  opacity: 0.55;
+  padding: 8px 0;
+}
+.pull__kind {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pull__kind-label {
+  font-family: var(--font-cond);
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin: 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--ink);
+}
+.pull__stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pull__stack-name {
+  font-family: var(--font-nh);
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  padding: 2px 0;
+}
+.pull__tasks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pull__task {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--ink);
+  padding: 10px 0;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font-nh);
+  font-size: 14px;
+  color: var(--ink);
+  transition: background 0.08s ease-out;
+}
+.pull__task:last-child {
+  border-bottom: 1px solid var(--ink);
+}
+.pull__task:hover:not(:disabled) {
+  background: var(--ink);
+  color: var(--canvas);
+}
+.pull__task:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.pull__task-name {
+  flex: 1;
+}
+.pull__task-meta {
+  font-family: var(--font-cond);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+.pull__task-arrow {
+  font-family: var(--font-cond);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.confirm__message {
+  font-family: var(--font-nh);
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 0;
+  line-height: 1.5;
+}
+.confirm__message strong {
+  font-weight: 500;
 }
 
 .modal__head {
@@ -1217,6 +1360,19 @@ textarea:focus {
 .task__chip--toggle-open {
   background: var(--ink);
   color: var(--canvas);
+}
+
+/* Short subtitle pulled from frontmatter `description:` — always visible
+ * (no toggle), so visitors see the one-line summary the owner typed in
+ * the edit modal without having to expand context. */
+.task__public-description {
+  margin: 4px 0 6px;
+  font-family: var(--font-nh);
+  font-size: 14px;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  opacity: 0.75;
 }
 
 .task__public-context {
@@ -2157,9 +2313,19 @@ textarea:focus {
   }
   .qc__input-wrap {
     gap: 8px;
+    flex-wrap: wrap;
   }
   .qc__input {
     font-size: 16px; /* 16px+ keeps iOS Safari from zooming on focus */
+    flex-basis: 100%;
+    order: 0;
+  }
+  /* Push Pull button below the input on mobile so the input gets full width. */
+  .qc__pull {
+    order: 2;
+  }
+  .qc__plus {
+    order: -1;
   }
   .qc__hints {
     /* full-width grid of 4 equal chips */

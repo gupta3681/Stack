@@ -6,6 +6,10 @@ import type { PriorityHint } from "../types";
 
 interface Props {
   stackDate: string;
+  /** Optional: when provided, renders a secondary "Pull from a topic stack"
+   * button on the same row as + Add. Daily stacks set this; topic stacks
+   * (where the same flow doesn't apply) leave it undefined. */
+  onPullClick?: () => void;
 }
 
 const HINTS: { value: PriorityHint; label: string }[] = [
@@ -15,7 +19,7 @@ const HINTS: { value: PriorityHint; label: string }[] = [
   { value: "low", label: "Low" },
 ];
 
-export function QuickCapture({ stackDate }: Props) {
+export function QuickCapture({ stackDate, onPullClick }: Props) {
   const invalidateStacks = useInvalidateStacks();
   const [name, setName] = useState("");
   const [hint, setHint] = useState<PriorityHint>("normal");
@@ -58,6 +62,16 @@ export function QuickCapture({ stackDate }: Props) {
           placeholder="what's next on the stack?"
           autoFocus
         />
+        {onPullClick && (
+          <button
+            type="button"
+            className="qc__pull"
+            onClick={onPullClick}
+            aria-label="Pull a task from a topic stack"
+          >
+            + Pull from a stack
+          </button>
+        )}
       </div>
       <div className="qc__hints" role="radiogroup" aria-label="Priority hint">
         {HINTS.map((h) => (

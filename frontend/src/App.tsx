@@ -10,6 +10,7 @@ import { StackView } from "./components/StackView";
 import { OverdueSection } from "./components/OverdueSection";
 import { OnboardingTips } from "./components/OnboardingTips";
 import { PublicStackView } from "./components/PublicStackView";
+import { PullFromStackModal } from "./components/PullFromStackModal";
 import { TopicStackList } from "./components/TopicStackList";
 import { TopicStackView } from "./components/TopicStackView";
 
@@ -136,6 +137,8 @@ interface DailyPanelProps {
 
 function DailyStackPanel({ view, today, tomorrow, logout }: DailyPanelProps) {
   const activeDate = view === "today" ? today : tomorrow;
+  const activeLabel = view === "today" ? "Today" : "Tomorrow";
+  const [pullOpen, setPullOpen] = useState(false);
   const stackQuery = useQuery({
     queryKey: ["stack", activeDate],
     queryFn: () => api.getStack(activeDate),
@@ -170,7 +173,10 @@ function DailyStackPanel({ view, today, tomorrow, logout }: DailyPanelProps) {
         label={view === "today" ? "TODAY'S STACK" : "TOMORROW'S STACK"}
         totalEstimateMinutes={totalEstimateMinutes}
       />
-      <QuickCapture stackDate={stack.stack_date!} />
+      <QuickCapture
+        stackDate={stack.stack_date!}
+        onPullClick={() => setPullOpen(true)}
+      />
       <StackView
         tasks={stack.tasks}
         stackRef={{ stackDate: stack.stack_date! }}
@@ -181,6 +187,12 @@ function DailyStackPanel({ view, today, tomorrow, logout }: DailyPanelProps) {
         }
       />
       {view === "today" && <OverdueSection todayDate={today} />}
+      <PullFromStackModal
+        open={pullOpen}
+        targetDate={activeDate}
+        targetLabel={activeLabel}
+        onClose={() => setPullOpen(false)}
+      />
     </>
   );
 }

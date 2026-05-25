@@ -4,6 +4,7 @@ import { api } from "../api/client";
 import { useInvalidateStacks } from "../hooks/useInvalidateStacks";
 import { formatMinutes } from "../lib/format";
 import { TOPIC_KINDS, type PriorityHint } from "../types";
+import { ConfirmModal } from "./ConfirmModal";
 import { ShareModal } from "./ShareModal";
 import { StackView } from "./StackView";
 
@@ -34,6 +35,7 @@ export function TopicStackView({ stackId, todayDate, onBack }: Props) {
   const [name, setName] = useState("");
   const [hint, setHint] = useState<PriorityHint>("normal");
   const [shareOpen, setShareOpen] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const create = useMutation({
     mutationFn: () =>
@@ -95,15 +97,7 @@ export function TopicStackView({ stackId, todayDate, onBack }: Props) {
             <button
               type="button"
               className="modal__danger"
-              onClick={() => {
-                if (
-                  window.confirm(
-                    `Delete the "${stack.name}" stack and all its items?`
-                  )
-                ) {
-                  remove.mutate();
-                }
-              }}
+              onClick={() => setConfirmingDelete(true)}
             >
               Delete
             </button>
@@ -115,6 +109,23 @@ export function TopicStackView({ stackId, todayDate, onBack }: Props) {
         stack={stack}
         open={shareOpen}
         onClose={() => setShareOpen(false)}
+      />
+
+      <ConfirmModal
+        open={confirmingDelete}
+        title="Delete stack"
+        message={
+          <>
+            Delete the <strong>"{stack.name}"</strong> stack and all{" "}
+            {stack.tasks.length} {stack.tasks.length === 1 ? "task" : "tasks"}{" "}
+            in it? This permanently removes everything — can't be undone.
+          </>
+        }
+        confirmLabel="Delete stack"
+        destructive
+        pending={remove.isPending}
+        onCancel={() => setConfirmingDelete(false)}
+        onConfirm={() => remove.mutate()}
       />
 
       <form

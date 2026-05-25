@@ -105,11 +105,16 @@ export function PublicStackView({ slug }: Props) {
           </div>
           <ul className="tasks">
             {stack.tasks.map((t, i) => {
-              // Strip frontmatter — the title and direct_link from the
-              // frontmatter are already represented by the linked heading,
-              // and showing `name: ...` as raw text is just noise.
+              // Strip frontmatter — `name` and `direct_link` are already
+              // represented by the linked title. `description` is a short
+              // one-line summary the user typed in the edit modal; render
+              // it as a subtitle so visitors see it without an extra click.
+              // Anything after the frontmatter (`body`) is the long-form
+              // markdown — hidden behind a toggle since it can run long.
               const parsed = t.context_md ? parseMd(t.context_md) : null;
+              const description = parsed?.fields.description?.trim() ?? "";
               const body = parsed?.body.trim() ?? "";
+              const hasMoreToShow = body.length > 0;
               // safeHref guards against pre-validator data or any non-http(s)
               // URL that somehow slipped through.
               const link = safeHref(t.direct_link);
@@ -145,14 +150,17 @@ export function PublicStackView({ slug }: Props) {
                   </div>
                   <div className="task__body">
                     <p className="task__title">{Title}</p>
-                    {(body || priorityChipLabel(t.priority_hint)) && (
+                    {description && (
+                      <p className="task__public-description">{description}</p>
+                    )}
+                    {(hasMoreToShow || priorityChipLabel(t.priority_hint)) && (
                       <div className="task__meta">
                         {priorityChipLabel(t.priority_hint) && (
                           <span className="task__chip">
                             {priorityChipLabel(t.priority_hint)}
                           </span>
                         )}
-                        {body && (
+                        {hasMoreToShow && (
                           <button
                             type="button"
                             className={`task__chip task__chip--toggle${
@@ -166,7 +174,7 @@ export function PublicStackView({ slug }: Props) {
                         )}
                       </div>
                     )}
-                    {body && expanded.has(i) && (
+                    {hasMoreToShow && expanded.has(i) && (
                       <div className="task__public-context">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
                           {body}
