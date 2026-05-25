@@ -92,11 +92,12 @@ export function LandingPage() {
             find it.
           </p>
           <p className="landing__lede">
-            The deeper bet is on what comes next: an AI agent that reads
-            across all your stacks (Today, Reading, Watching, Buy, Ideas)
+            Already agent-readable: an API token lets your CLI or Claude
+            Code add tasks, pull from a topic stack into today, and mark
+            things done — same endpoints the web app calls. The deeper bet
+            is on what comes next: an agent that reads across your stacks
             and proposes what should move where, based on what you're
-            focused on right now. Priority as a function of context, not a
-            static label.
+            focused on right now.
           </p>
         </div>
 
@@ -267,6 +268,17 @@ export function LandingPage() {
             Each task carries a link and notes alongside the title. Click
             to open the link; the notes stay attached for the deeper
             context.
+          </p>
+        </article>
+        <article className="landing__feature">
+          <div className="landing__feature-label">04 · Agent-friendly</div>
+          <h3 className="landing__feature-title">Your CLI knows your stack.</h3>
+          <p className="landing__feature-body">
+            Mint a personal API token in your profile, then any agent or
+            script can read your stacks, add tasks, complete or move them,
+            even share a list — over the same REST endpoints the web app
+            uses. A Claude Code skill ships in the repo so the curl
+            recipes are one symlink away.
           </p>
         </article>
       </section>

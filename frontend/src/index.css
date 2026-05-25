@@ -1774,7 +1774,9 @@ textarea:focus {
 
 .landing__features {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* 2x2 grid on desktop. 4 cards balance better as a square than as a
+   * 3+orphan row; collapses to single column on mobile. */
+  grid-template-columns: repeat(2, 1fr);
   gap: 32px;
   margin-bottom: 80px;
 }
