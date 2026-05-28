@@ -77,6 +77,30 @@ def test_delete_topic_stack_cascades_tasks(auth_client: TestClient):
     assert survives.json()["stack_id"] is None
 
 
+def test_rename_topic_stack(auth_client: TestClient):
+    sid = auth_client.post(
+        "/stacks/topics", json={"kind": "reading", "name": "Sci-Fi"}
+    ).json()["id"]
+    r = auth_client.patch(f"/stacks/topics/{sid}", json={"name": "  Hard SF  "})
+    assert r.status_code == 200
+    # Name is trimmed and other fields are untouched.
+    assert r.json()["name"] == "Hard SF"
+    assert r.json()["kind"] == "reading"
+    # And it sticks on a fresh read.
+    assert auth_client.get(f"/stacks/topics/{sid}").json()["name"] == "Hard SF"
+
+
+def test_rename_topic_stack_rejects_foreign_owner(second_client: TestClient, auth_client: TestClient):
+    sid = auth_client.post(
+        "/stacks/topics", json={"kind": "reading", "name": "Mine"}
+    ).json()["id"]
+    # Another user can't rename a stack they don't own — 404 (not 403) to avoid
+    # leaking existence.
+    r = second_client.patch(f"/stacks/topics/{sid}", json={"name": "Hijacked"})
+    assert r.status_code == 404
+    assert auth_client.get(f"/stacks/topics/{sid}").json()["name"] == "Mine"
+
+
 def test_move_task_into_topic_stack(auth_client: TestClient):
     sid = auth_client.post(
         "/stacks/topics", json={"kind": "reading", "name": "Sci-Fi"}

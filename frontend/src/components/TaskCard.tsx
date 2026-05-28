@@ -95,6 +95,10 @@ export function TaskCard({ task, positionIndex, moveTarget, canPushToStack = fal
 
   const isDone = task.status === "done";
   const isActive = task.in_progress_started_at !== null;
+  // Completed tasks all collapse to the least-prominent tier so the stack
+  // reads as "what's left to do" — a done item never visually dominates,
+  // and two done items look identical regardless of their slot.
+  const prominence = isDone ? "task--prest" : prominenceClass(positionIndex);
   const elapsed = useLiveElapsed(
     isActive,
     task.in_progress_started_at,
@@ -141,7 +145,7 @@ export function TaskCard({ task, positionIndex, moveTarget, canPushToStack = fal
         style={style}
         className={[
           "task",
-          prominenceClass(positionIndex),
+          prominence,
           isDragging ? "task--dragging" : "",
           isDone ? "task--done" : "",
           isActive ? "task--active" : "",

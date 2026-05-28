@@ -77,7 +77,11 @@ export const api = {
 
   updateTopicStack: (
     stackId: number,
-    fields: { intention?: string | null; share_context_in_public?: boolean }
+    fields: {
+      name?: string;
+      intention?: string | null;
+      share_context_in_public?: boolean;
+    }
   ) =>
     request<Stack>(`/stacks/topics/${stackId}`, {
       method: "PATCH",

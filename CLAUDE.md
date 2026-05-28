@@ -41,7 +41,7 @@ Stack's core moves:
 
 - ✅ Multi-user with email+password auth, server-side sessions, HTTP-only cookies
 - ✅ Daily stacks (Today, Tomorrow) with drag-reorder, prominence scaling, intention line, overdue surfacing
-- ✅ Topic stacks (7 kinds: `daily`, `todo`, `reading`, `watching`, `listening`, `buy`, `ideas`)
+- ✅ Topic stacks (7 kinds: `daily`, `todo`, `reading`, `watching`, `listening`, `buy`, `ideas`) — rename inline by clicking the title on the stack detail view (`PATCH /stacks/topics/{id}` with `name`)
 - ✅ Per-task: name, **context_md (long-form markdown with optional YAML frontmatter; backend doesn't parse it yet)**, **direct_link (URL — primary click target on the card)**, due date, priority hint, status (pending / in_progress / done / cancelled), live timer for in-progress
 - ✅ Move tasks between stacks (e.g. pull from a topic stack into Today)
 - ✅ Quick-capture with priority hints
@@ -220,7 +220,7 @@ Stack/
 │   │       ├── tasks.py     ← /tasks/{...} CRUD + move/reorder/start/pause
 │   │       ├── public.py    ← /public/stacks/{slug} (read-only, unauthed)
 │   │       └── admin.py     ← /admin/{stats,users} (require is_admin)
-│   └── tests/               ← pytest suite (114 tests)
+│   └── tests/               ← pytest suite (152 tests)
 │       ├── conftest.py      ← in-memory SQLite fixtures
 │       ├── test_auth.py
 │       ├── test_stacks.py
@@ -308,7 +308,7 @@ The root [Dockerfile](Dockerfile) builds the React app, writes the production ng
 cd backend && uv run pytest
 ```
 
-Each test gets a fresh in-memory SQLite database via [conftest.py](backend/tests/conftest.py). The `client` fixture is a TestClient with the `get_db` dependency overridden. The `auth_client` fixture is the same but already signed up as `aryan@example.com`. The `second_client` is a separate TestClient (own cookie jar) signed up as `other@example.com` — used for multi-tenant isolation tests. Current suite size: 137 tests.
+Each test gets a fresh in-memory SQLite database via [conftest.py](backend/tests/conftest.py). The `client` fixture is a TestClient with the `get_db` dependency overridden. The `auth_client` fixture is the same but already signed up as `aryan@example.com`. The `second_client` is a separate TestClient (own cookie jar) signed up as `other@example.com` — used for multi-tenant isolation tests. Current suite size: 152 tests.
 
 When adding new endpoints or behaviors, add a test in the matching `test_*.py` file. The suite runs in ~12s and is the cheapest possible regression net.
 
@@ -362,7 +362,7 @@ If you're tempted to add a color or rounded corner, stop. The whole product's vi
 
 6. **Timer state is committed only on pause/done.** While running, only the frontend ticks (`useLiveElapsed`). The backend stores `in_progress_started_at` + `accumulated_seconds`; effective elapsed = `accumulated + (now - started_at)`. Don't write live time on every tick.
 
-7. **Position is per-stack, dense from 0.** Reorder endpoint requires the full set of task IDs in the stack (no partial reorders). Insert with priority hints shifts neighbors. There's one known latent gap: same-stack `move_task` with no position can leave a hole (see CLAUDE.md history for context — covered in the code review). **Status transitions to `done` or `cancelled` slide the task to the LAST position** ([`_move_task_to_end_of_stack` in tasks.py](backend/app/routers/tasks.py)) so the "top of the stack = next thing to do" metaphor stays honest — a done item at position 0 was still visually dominating the largest prominence tier. Only fires on real transitions (idempotent re-sets are a no-op for ordering). Reviving a done task to pending does NOT restore its original position — it stays at the bottom and the user can drag back up.
+7. **Position is per-stack, dense from 0.** Reorder endpoint requires the full set of task IDs in the stack (no partial reorders). Insert with priority hints shifts neighbors. There's one known latent gap: same-stack `move_task` with no position can leave a hole (see CLAUDE.md history for context — covered in the code review). **Status transitions to `done` or `cancelled` slide the task to the LAST position** ([`_move_task_to_end_of_stack` in tasks.py](backend/app/routers/tasks.py)) so the "top of the stack = next thing to do" metaphor stays honest — a done item at position 0 was still visually dominating the largest prominence tier. Only fires on real transitions (idempotent re-sets are a no-op for ordering). Reviving a done task to pending does NOT restore its original position — it stays at the bottom and the user can drag back up. **The frontend also collapses every done task to the least-prominent tier (`task--prest`) regardless of its slot** ([prominence in TaskCard.tsx](frontend/src/components/TaskCard.tsx)) — the backend slide-to-end is the primary mechanism, but with only a few tasks a done item can still land in a high slot, so the class override guarantees all completed items render identically (smallest, faded) and never visually dominate.
 
 8. **Backend reload + bind mount in dev compose, NOT in prod.** [docker-compose.yml](docker-compose.yml) overrides the backend's `command` to add `--reload` and mounts `./backend/app` → `/app/app`. The prod overlay resets both (`!reset null`, `!reset []`) so production runs the immutable image.
 

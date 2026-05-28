@@ -36,6 +36,8 @@ export function TopicStackView({ stackId, todayDate, onBack }: Props) {
   const [hint, setHint] = useState<PriorityHint>("normal");
   const [shareOpen, setShareOpen] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
 
   const create = useMutation({
     mutationFn: () =>
@@ -59,6 +61,25 @@ export function TopicStackView({ stackId, todayDate, onBack }: Props) {
       onBack();
     },
   });
+
+  const rename = useMutation({
+    mutationFn: (value: string) => api.updateTopicStack(stackId, { name: value }),
+    onSuccess: () => invalidateStacks(),
+  });
+
+  const startEditingName = () => {
+    setNameDraft(stack?.name ?? "");
+    setEditingName(true);
+  };
+
+  const commitName = () => {
+    setEditingName(false);
+    const next = nameDraft.trim();
+    // Empty name isn't allowed (mirrors create's min_length=1); an unchanged
+    // name needs no round-trip.
+    if (!next || next === stack?.name) return;
+    rename.mutate(next);
+  };
 
   if (isLoading || !stack) {
     return <div className="empty">{isLoading ? "Loading…" : "—"}</div>;
@@ -86,7 +107,31 @@ export function TopicStackView({ stackId, todayDate, onBack }: Props) {
           })()}
         </div>
         <div className="topics__head">
-          <h1 className="stack-head__title">{stack.name}</h1>
+          {editingName ? (
+            <input
+              className="stack-head__title stack-head__title-input"
+              value={nameDraft}
+              autoFocus
+              aria-label="Stack name"
+              onChange={(e) => setNameDraft(e.target.value)}
+              onBlur={commitName}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.currentTarget.blur();
+                if (e.key === "Escape") {
+                  setNameDraft(stack.name ?? "");
+                  setEditingName(false);
+                }
+              }}
+            />
+          ) : (
+            <h1
+              className="stack-head__title stack-head__title--editable"
+              title="Click to rename"
+              onClick={startEditingName}
+            >
+              {stack.name}
+            </h1>
+          )}
           <div className="topics__head-actions">
             <button type="button" onClick={onBack}>
               ← All stacks

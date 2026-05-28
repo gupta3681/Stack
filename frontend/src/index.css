@@ -262,6 +262,36 @@ textarea:focus {
   margin: 0 0 12px;
 }
 
+/* Click-to-rename affordance: the title reads as plain text until hovered,
+   then a thin underline signals it's editable (no color — design system). */
+.stack-head__title--editable {
+  cursor: text;
+  /* Reserve the underline at rest (transparent) so hover/edit don't shift
+     the title down by a pixel. */
+  border-bottom: 1px solid transparent;
+}
+.stack-head__title--editable:hover {
+  border-bottom: 1px solid var(--ink);
+}
+
+/* The rename input is styled to sit exactly where the <h1> was so swapping
+   between read and edit doesn't shift the layout. */
+.stack-head__title-input {
+  border: none;
+  border-bottom: 1px solid var(--ink);
+  padding: 0;
+  background: transparent;
+  /* Grow to fill the head row but yield space to the action buttons;
+     min-width:0 stops the input from blowing past its flex track. */
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.stack-head__title-input:focus {
+  border: none;
+  border-bottom: 1px solid var(--ink);
+  padding: 0;
+}
+
 .stack-head__intention {
   font-family: var(--font-ev);
   font-weight: 100;
