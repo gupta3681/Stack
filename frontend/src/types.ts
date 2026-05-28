@@ -40,6 +40,15 @@ export interface Task {
   accumulated_seconds: number;
 }
 
+/** A done task plus the stack it was completed in — the shape returned by
+ * GET /tasks/completed and rendered on the Completed archive page. The stack_*
+ * fields are all null when the task lives in the backlog (stack_id === null). */
+export interface CompletedTask extends Task {
+  stack_kind: StackKind | null;
+  stack_name: string | null;
+  stack_date: string | null;
+}
+
 export interface Stack {
   // null when the row hasn't been persisted yet (GET on a date with no tasks).
   id: number | null;

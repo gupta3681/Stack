@@ -46,6 +46,7 @@ Stack's core moves:
 - ✅ Move tasks between stacks (e.g. pull from a topic stack into Today)
 - ✅ Quick-capture with priority hints
 - ✅ Edit modal (name, direct_link, description, context_md markdown editor with bidirectional frontmatter sync + preview tab, due date, priority hint)
+- ✅ Completed archive — a dedicated `Completed` nav page aggregating every done task across all stacks (daily + topic + backlog). Free-text search (name + context_md), source filter chips (only kinds that actually appear, plus Backlog), and time-range chips (all / 7d / 30d). Each row shows source + completion date + tracked time; clicking opens the same TaskEditModal. Backed by `GET /tasks/completed`.
 - ✅ Profile modal (display name + change password with current-pw verification + API token management)
 - ✅ Confirm-password field on signup
 - ✅ Bearer-token API access (per-user PATs, `stk_…`) for CLIs / agents / Claude Code skill file at [.claude/skills/stack/SKILL.md](.claude/skills/stack/SKILL.md)
@@ -217,10 +218,10 @@ Stack/
 │   │   └── routers/
 │   │       ├── auth.py      ← /auth/{signup,login,logout,me,change-password,me/onboarded,tokens}
 │   │       ├── stacks.py    ← /stacks/{today,tomorrow,overdue,counts,{date},topics,...}
-│   │       ├── tasks.py     ← /tasks/{...} CRUD + move/reorder/start/pause
+│   │       ├── tasks.py     ← /tasks/{...} CRUD + move/reorder/start/pause + /tasks/completed (cross-stack archive)
 │   │       ├── public.py    ← /public/stacks/{slug} (read-only, unauthed)
 │   │       └── admin.py     ← /admin/{stats,users} (require is_admin)
-│   └── tests/               ← pytest suite (152 tests)
+│   └── tests/               ← pytest suite (157 tests)
 │       ├── conftest.py      ← in-memory SQLite fixtures
 │       ├── test_auth.py
 │       ├── test_stacks.py
@@ -235,7 +236,7 @@ Stack/
     ├── vite.config.ts       ← env-aware proxy target + file-watching polling
     └── src/
         ├── main.tsx
-        ├── App.tsx          ← auth gate + view router (today/tomorrow/stacks)
+        ├── App.tsx          ← auth gate + view router (today/tomorrow/stacks/completed/admin)
         ├── index.css        ← all styles, Mono design tokens at top
         ├── types.ts
         ├── api/client.ts    ← `request<T>()` wrapper + the `api` object
@@ -251,6 +252,7 @@ Stack/
             ├── TaskEditModal.tsx   ← edit name/direct_link/desc (via frontmatter sync)/context_md/due/priority
             ├── OverdueSection.tsx
             ├── OnboardingTips.tsx  ← first-run dismissable tips card
+            ├── CompletedView.tsx   ← cross-stack Completed archive (search + source/time filters)
             ├── TopicStackList.tsx  ← "All Stacks" page + create modal
             └── TopicStackView.tsx  ← single topic stack detail
 ```
@@ -308,7 +310,7 @@ The root [Dockerfile](Dockerfile) builds the React app, writes the production ng
 cd backend && uv run pytest
 ```
 
-Each test gets a fresh in-memory SQLite database via [conftest.py](backend/tests/conftest.py). The `client` fixture is a TestClient with the `get_db` dependency overridden. The `auth_client` fixture is the same but already signed up as `aryan@example.com`. The `second_client` is a separate TestClient (own cookie jar) signed up as `other@example.com` — used for multi-tenant isolation tests. Current suite size: 152 tests.
+Each test gets a fresh in-memory SQLite database via [conftest.py](backend/tests/conftest.py). The `client` fixture is a TestClient with the `get_db` dependency overridden. The `auth_client` fixture is the same but already signed up as `aryan@example.com`. The `second_client` is a separate TestClient (own cookie jar) signed up as `other@example.com` — used for multi-tenant isolation tests. Current suite size: 157 tests.
 
 When adding new endpoints or behaviors, add a test in the matching `test_*.py` file. The suite runs in ~12s and is the cheapest possible regression net.
 
@@ -372,7 +374,7 @@ If you're tempted to add a color or rounded corner, stop. The whole product's vi
 
 11. **CSRF header is mandatory on unsafe requests.** [api/client.ts](frontend/src/api/client.ts) adds `X-Stack-CSRF: 1` globally. Any new non-frontend client or test fixture must send that header for POST/PATCH/DELETE.
 
-12. **Use `useInvalidateStacks()` after any task or stack mutation** ([useInvalidateStacks.ts](frontend/src/hooks/useInvalidateStacks.ts)). The hook invalidates `["stack"]`, `["topic-stack"]`, `["topic-stacks"]`, and `["overdue"]` together. If you only invalidate one, mutations on a topic-stack view won't refresh the UI (the bug that motivated this hook). Don't inline `qc.invalidateQueries({queryKey: ["stack"]})` in new mutations — use the hook so it stays consistent.
+12. **Use `useInvalidateStacks()` after any task or stack mutation** ([useInvalidateStacks.ts](frontend/src/hooks/useInvalidateStacks.ts)). The hook invalidates `["stack"]`, `["topic-stack"]`, `["topic-stacks"]`, `["overdue"]`, `["counts"]`, and `["completed"]` together. If you only invalidate one, mutations on a topic-stack view won't refresh the UI (the bug that motivated this hook) and the Completed archive will go stale after a task is marked done/undone. Don't inline `qc.invalidateQueries({queryKey: ["stack"]})` in new mutations — use the hook so it stays consistent.
 
 13. **Mobile responsive at ≤700px and ≤420px** (all in one `@media` block at the bottom of [index.css](frontend/src/index.css)). When adding new components, keep them desktop-correct at the component level and add mobile overrides in that block — don't mix breakpoints throughout the file. Inputs that accept text must be ≥16px font-size on mobile or iOS Safari zooms on focus. Drag-and-drop uses `MouseSensor` + `TouchSensor` with a 200ms touch delay so finger scroll isn't hijacked into a reorder.
 
@@ -383,6 +385,8 @@ If you're tempted to add a color or rounded corner, stop. The whole product's vi
 16. **`POST /auth/change-password` requires the current password.** Never let a session change the password without re-verifying — a hijacked session could otherwise lock the real owner out. Also rejects "new == current" with 400.
 
 17. **`/stacks/counts` is the source for topbar badges.** Don't compute counts client-side from cached stack queries — different views fetch different keys, so counts would drift. Always invalidate `["counts"]` on mutations (`useInvalidateStacks` already does).
+
+26. **Literal task routes must be declared before `/{task_id}`.** `GET /tasks/completed` and `GET /tasks/backlog` are registered ABOVE the parameterized `/{task_id}` routes in [tasks.py](backend/app/routers/tasks.py). FastAPI matches in declaration order, so if `/{task_id}` comes first it swallows `/completed` and tries to parse `"completed"` as an int → 422. The tests catch the wiring, but the preview backend in [.claude/launch.json](.claude/launch.json) runs uvicorn **without `--reload`** (unlike `./dev.sh` and docker-compose, which both enable it), so after adding or reordering a route you must restart that backend process — a stale worker will keep serving the old route table and return a confusing 422.
 
 ---
 

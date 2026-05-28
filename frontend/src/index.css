@@ -653,6 +653,130 @@ textarea:focus {
   opacity: 0.6;
 }
 
+/* ── Completed archive ── */
+
+.completed {
+  display: flex;
+  flex-direction: column;
+}
+
+.completed__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* Full-width underlined search bar — same "border, no box" language as the
+   rest of the inputs. 18px so iOS Safari doesn't zoom on focus. */
+.completed__search {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--ink);
+  background: transparent;
+  padding: 8px 0;
+  font-family: var(--font-nh);
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.completed__search:focus {
+  border-bottom: 1px solid var(--ink);
+  padding: 8px 0;
+}
+.completed__search::placeholder {
+  color: var(--ink);
+  opacity: 0.4;
+}
+
+/* Two chip groups (source, time) sit side by side and wrap on narrow widths. */
+.completed__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.completed__summary {
+  font-family: var(--font-cond);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  opacity: 0.6;
+  margin-bottom: 8px;
+}
+
+.completed__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-top: 1px solid var(--ink);
+}
+
+.completed__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--ink);
+  cursor: pointer;
+}
+
+.completed__item:hover .completed__name {
+  text-decoration: underline;
+}
+
+.completed__main {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.completed__name {
+  font-family: var(--font-nh);
+  font-weight: 300;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.completed__link {
+  font-size: 14px;
+  color: var(--ink);
+  text-decoration: none;
+  opacity: 0.6;
+}
+.completed__link:hover {
+  opacity: 1;
+}
+
+.completed__meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.completed__source {
+  font-family: var(--font-cond);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.completed__date {
+  font-family: var(--font-cond);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  opacity: 0.5;
+  white-space: nowrap;
+}
+
 /* ── Edit modal ── */
 
 .modal-backdrop {
@@ -3036,6 +3160,16 @@ textarea:focus {
   }
   .topics__item-name {
     font-size: 22px;
+  }
+
+  /* Completed archive: stack name over meta so the row doesn't crowd. */
+  .completed__item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .completed__meta {
+    flex-wrap: wrap;
   }
 
   /* Overdue */

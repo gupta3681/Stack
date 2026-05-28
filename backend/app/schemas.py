@@ -93,6 +93,20 @@ class TaskOut(TaskBase):
     accumulated_seconds: int
 
 
+class CompletedTaskOut(TaskOut):
+    """A done task plus the context of the stack it was completed in.
+
+    Powers the cross-stack Completed archive. The three stack_* fields are
+    folded in by the endpoint so the page can show and filter by source
+    without an N+1 of stack lookups. All three are null when the task lives
+    in the backlog (stack_id is None).
+    """
+
+    stack_kind: StackKind | None = None
+    stack_name: str | None = None
+    stack_date: date | None = None
+
+
 class StackOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

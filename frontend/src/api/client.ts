@@ -4,6 +4,7 @@ import type {
   ApiToken,
   ApiTokenCreated,
   AuthUser,
+  CompletedTask,
   CreateTaskInput,
   CreateTopicStackInput,
   FeedbackEntry,
@@ -105,6 +106,8 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ intention }),
     }),
+
+  listCompletedTasks: () => request<CompletedTask[]>("/tasks/completed"),
 
   createTask: (input: CreateTaskInput) =>
     request<Task>("/tasks", {

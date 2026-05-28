@@ -1,8 +1,8 @@
 from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session, selectinload
 
 from .. import models, schemas
 from ..auth import get_current_user
@@ -160,6 +160,44 @@ def get_backlog(
         .order_by(models.Task.position, models.Task.created_at)
     )
     return db.execute(stmt).scalars().all()
+
+
+def _completed_out(task: models.Task) -> schemas.CompletedTaskOut:
+    """Project a done Task (+ its loaded stack) into the archive shape."""
+    stack = task.stack
+    return schemas.CompletedTaskOut(
+        **schemas.TaskOut.model_validate(task).model_dump(),
+        stack_kind=stack.kind if stack is not None else None,
+        stack_name=stack.name if stack is not None else None,
+        stack_date=stack.stack_date if stack is not None else None,
+    )
+
+
+@router.get("/completed", response_model=list[schemas.CompletedTaskOut])
+def get_completed_tasks(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Every done task across all of the user's stacks, newest completion first.
+
+    Powers the Completed archive page. Stack context (kind/name/date) is folded
+    in so the page can show and filter by source without an N+1 of stack
+    fetches. Filtering and search run client-side for instant feedback — a
+    personal archive is small enough to ship whole. coalesce(completed_at,
+    updated_at) guards the handful of rows marked done before completed_at was
+    tracked, and keeps ordering stable on SQLite (no NULLS LAST dependency)."""
+    stmt = (
+        select(models.Task)
+        .where(
+            models.Task.user_id == current_user.id,
+            models.Task.status == models.TaskStatus.done,
+        )
+        .options(selectinload(models.Task.stack))
+        .order_by(
+            func.coalesce(models.Task.completed_at, models.Task.updated_at).desc()
+        )
+    )
+    return [_completed_out(t) for t in db.execute(stmt).scalars().all()]
 
 
 @router.post("", response_model=schemas.TaskOut, status_code=status.HTTP_201_CREATED)
