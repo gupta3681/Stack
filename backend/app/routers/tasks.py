@@ -194,7 +194,8 @@ def get_completed_tasks(
         )
         .options(selectinload(models.Task.stack))
         .order_by(
-            func.coalesce(models.Task.completed_at, models.Task.updated_at).desc()
+            func.coalesce(models.Task.completed_at, models.Task.updated_at).desc(),
+            models.Task.id.desc(),
         )
     )
     return [_completed_out(t) for t in db.execute(stmt).scalars().all()]
